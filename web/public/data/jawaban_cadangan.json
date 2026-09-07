@@ -1,0 +1,494 @@
+[
+ {
+  "tanya": "RS mana yang paling perlu diperhatikan di Semarang dan berapa rupiahnya?",
+  "jawab": {
+   "teks": "Tiga temuan dengan selisih terbesar di Kota Semarang: RS-31595 (A, Vertikal) pada modul #4 Upcoding severity dengan O/E 1,46 dan selisih Rp 18,4 M tertimbang; RS-31598 (Setara B, Swasta) pada modul #4 Upcoding severity dengan O/E 2,21 dan selisih Rp 5,2 M tertimbang; RS-31608 (Setara C, Swasta) pada modul #4 Upcoding severity dengan O/E 3,30 dan selisih Rp 2,9 M tertimbang. Total 67 temuan berstatus perlu perhatian atau diamati, dengan selisih Rp 698,7 jt pada sampel (≈ Rp 46,4 M tertimbang). Ini indikasi statistik untuk prioritas audit, bukan bukti pelanggaran.",
+   "angka": [
+    {
+     "label": "temuan aktif",
+     "nilai": "67"
+    },
+    {
+     "label": "selisih sampel",
+     "nilai": "Rp 698,7 jt"
+    },
+    {
+     "label": "tertimbang",
+     "nilai": "Rp 46,4 M"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Antrean audit",
+     "url": "/antrean"
+    },
+    {
+     "label": "RS-31595",
+     "url": "/faskes/31595"
+    },
+    {
+     "label": "RS-31598",
+     "url": "/faskes/31598"
+    },
+    {
+     "label": "RS-31608",
+     "url": "/faskes/31608"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Urutkan tiga temuan terbesar dan alasannya",
+  "jawab": {
+   "teks": "Urutan menurut selisih rupiah tertimbang: RS-31595 (A, Vertikal) pada modul #4 Upcoding severity dengan O/E 1,46 dan selisih Rp 18,4 M tertimbang; RS-31598 (Setara B, Swasta) pada modul #4 Upcoding severity dengan O/E 2,21 dan selisih Rp 5,2 M tertimbang; RS-31608 (Setara C, Swasta) pada modul #4 Upcoding severity dengan O/E 3,30 dan selisih Rp 2,9 M tertimbang. Ketiganya melewati ambang ganda O/E > 1,05 dan z > 1,96.",
+   "angka": [
+    {
+     "label": "RS-31595",
+     "nilai": "1,46"
+    },
+    {
+     "label": "RS-31598",
+     "nilai": "2,21"
+    },
+    {
+     "label": "RS-31608",
+     "nilai": "3,30"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Antrean audit",
+     "url": "/antrean"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Berapa estimasi selisih rupiah semua modul di Semarang?",
+  "jawab": {
+   "teks": "Selisih rupiah faskes yang ditandai di Kota Semarang berjumlah Rp 698,7 jt pada data sampel, atau sekitar Rp 46,4 M setelah dibobot ke populasi peserta. Rinciannya: rujukan Rp 8,0 M, severity Rp 36,0 M, fragmentasi Rp 2,4 M, readmisi Rp 0 (tertimbang). Angka tertimbang adalah orde besaran, bukan nilai pasti.",
+   "angka": [
+    {
+     "label": "sampel",
+     "nilai": "Rp 698,7 jt"
+    },
+    {
+     "label": "tertimbang",
+     "nilai": "Rp 46,4 M"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Beranda",
+     "url": "/"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Ringkas kondisi Kota Semarang dalam tiga kalimat",
+  "jawab": {
+   "teks": "Dari 32 RS dan 285 FKTP di Kota Semarang, 36 faskes berstatus perlu perhatian pada setidaknya satu modul. Selisih yang ditandai mencapai Rp 698,7 jt pada sampel (≈ Rp 46,4 M tertimbang). Modul dengan faskes perlu perhatian terbanyak: rujukan.",
+   "angka": [
+    {
+     "label": "RS",
+     "nilai": "32"
+    },
+    {
+     "label": "FKTP",
+     "nilai": "285"
+    },
+    {
+     "label": "perlu perhatian",
+     "nilai": "36"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Beranda",
+     "url": "/"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Berapa faskes yang statusnya perlu perhatian per modul?",
+  "jawab": {
+   "teks": "#3 Rujukan tidak sesuai: 25 perlu perhatian, 27 diamati dari 160 dinilai; #4 Upcoding severity: 9 perlu perhatian, 2 diamati dari 20 dinilai; #9 Fragmentasi layanan: 3 perlu perhatian, 1 diamati dari 22 dinilai; #16 Readmisi 30 hari: 0 perlu perhatian, 0 diamati dari 20 dinilai.",
+   "angka": [
+    {
+     "label": "Rujukan tidak sesuai",
+     "nilai": "25"
+    },
+    {
+     "label": "Upcoding severity",
+     "nilai": "9"
+    },
+    {
+     "label": "Fragmentasi layanan",
+     "nilai": "3"
+    },
+    {
+     "label": "Readmisi 30 hari",
+     "nilai": "0"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Antrean audit",
+     "url": "/antrean"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Kabupaten mana di Jawa Tengah dengan O/E readmisi tertinggi?",
+  "jawab": {
+   "teks": "Lima kabupaten/kota Jawa Tengah dengan O/E readmisi tertinggi: Tegal 1,14 (5 faskes dinilai, 0 perlu perhatian); Purbalingga 1,11 (8 faskes dinilai, 2 perlu perhatian); Banyumas 1,08 (14 faskes dinilai, 2 perlu perhatian); Blora 1,06 (5 faskes dinilai, 0 perlu perhatian); Kota Tegal 1,05 (3 faskes dinilai, 0 perlu perhatian). O/E di atas 1 berarti readmisi lebih banyak daripada wajar menurut bauran kasusnya.",
+   "angka": [
+    {
+     "label": "Tegal",
+     "nilai": "1,14"
+    },
+    {
+     "label": "Purbalingga",
+     "nilai": "1,11"
+    },
+    {
+     "label": "Banyumas",
+     "nilai": "1,08"
+    },
+    {
+     "label": "Blora",
+     "nilai": "1,06"
+    },
+    {
+     "label": "Kota Tegal",
+     "nilai": "1,05"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Peta L1",
+     "url": "/peta"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Dari kabupaten mana pasien readmisi di Semarang paling banyak berasal?",
+  "jawab": {
+   "teks": "Sebanyak 42,8% rawat inap di RS Semarang adalah peserta berdomisili luar kota. Asal terbanyak: Kota Semarang (1604 admisi, readmisi 169 vs wajar 207,0); Demak (225 admisi, readmisi 48 vs wajar 43,9); Grobogan (126 admisi, readmisi 45 vs wajar 39,8); Kendal (122 admisi, readmisi 29 vs wajar 32,6); Semarang (106 admisi, readmisi 21 vs wajar 23,5).",
+   "angka": [
+    {
+     "label": "Kota Semarang",
+     "nilai": "1604"
+    },
+    {
+     "label": "Demak",
+     "nilai": "225"
+    },
+    {
+     "label": "Grobogan",
+     "nilai": "126"
+    },
+    {
+     "label": "Kendal",
+     "nilai": "122"
+    },
+    {
+     "label": "Semarang",
+     "nilai": "106"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Peta L3 aliran",
+     "url": "/peta"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Kecamatan mana yang paling padat faskes?",
+  "jawab": {
+   "teks": "Menurut titik faskes OpenStreetMap dan penduduk BPS 2025, kecamatan dengan faskes per 100 ribu penduduk tertinggi: Gunungpati (57,6 per 100 rb; 1 RS, 58 klinik); Semarang Tengah (50,7 per 100 rb; 1 RS, 27 klinik); Gajahmungkur (49,7 per 100 rb; 3 RS, 25 klinik). Ini data konteks publik, bukan hasil deteksi.",
+   "angka": [
+    {
+     "label": "Gunungpati",
+     "nilai": "57,6"
+    },
+    {
+     "label": "Semarang Tengah",
+     "nilai": "50,7"
+    },
+    {
+     "label": "Gajahmungkur",
+     "nilai": "49,7"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Peta L2",
+     "url": "/peta"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Kenapa RS dengan angka readmisi tinggi bisa berstatus wajar?",
+  "jawab": {
+   "teks": "Karena yang dinilai bukan angka mentah, melainkan O/E: readmisi nyata dibandingkan dengan yang wajar untuk bauran kasus RS itu. RS yang merawat kasus kronis berat memang memiliki Expected tinggi, sehingga angka mentah tinggi bisa berujung O/E sekitar 1 dan status wajar. Sebaliknya RS dengan kasus ringan tetapi readmisi di atas wajar akan ditandai.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Modul readmisi",
+     "url": "/modul/readmisi"
+    },
+    {
+     "label": "Metodologi",
+     "url": "/metodologi"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "RS mana yang ditandai untuk readmisi dan berapa selisihnya?",
+  "jawab": {
+   "teks": "Tidak ada RS di Semarang yang ditandai pada modul readmisi.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Modul readmisi",
+     "url": "/modul/readmisi"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Apakah RS kelas A dengan severity III 22% itu wajar?",
+  "jawab": {
+   "teks": "Pangsa severity III yang tinggi pada RS kelas A sebagian besar wajar karena bauran kasusnya berat. SIDAK menilai O/E setelah menyesuaikan kelompok INA-CBG, diagnosis, usia, dan lama rawat, tanpa memasukkan kelas RS sebagai fitur. Di Semarang, RS kelas A memiliki angka mentah 21,6% dengan O/E 1,46 dan 1 faskes perlu perhatian.",
+   "angka": [
+    {
+     "label": "O/E kelas A",
+     "nilai": "1,46"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Modul severity",
+     "url": "/modul/severity"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Berapa selisih tarif severity III dan II?",
+  "jawab": {
+   "teks": "Pada kelompok kasus yang sama, tarif severity III lebih tinggi dari severity II dengan median sekitar Rp 2,9 jt (Data Sampel 2024). Selisih inilah yang dipakai menghitung rupiah kelebihan severity III.",
+   "angka": [
+    {
+     "label": "selisih tarif median",
+     "nilai": "Rp 2,9 jt"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Modul severity",
+     "url": "/modul/severity"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Faskes mana yang diputihkan karena pola dialisis?",
+  "jawab": {
+   "teks": "Tidak ada faskes Semarang yang berubah status karena daftar putih.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Modul fragmentasi",
+     "url": "/modul/fragmentasi"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "RS mana yang tersisa sebagai kandidat audit fragmentasi?",
+  "jawab": {
+   "teks": "Setelah daftar putih klinis, 4 RS Semarang tetap ditandai: RS-31601 (Setara C, O/E 1,18, Perlu perhatian); RS-84986 (Setara C, O/E 1,39, Perlu perhatian); RS-38587 (Setara C, O/E 1,09, Diamati); RS-31612 (TNI/Polri III, O/E 1,21, Perlu perhatian).",
+   "angka": [
+    {
+     "label": "RS-31601",
+     "nilai": "1,18"
+    },
+    {
+     "label": "RS-84986",
+     "nilai": "1,39"
+    },
+    {
+     "label": "RS-38587",
+     "nilai": "1,09"
+    },
+    {
+     "label": "RS-31612",
+     "nilai": "1,21"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Modul fragmentasi",
+     "url": "/modul/fragmentasi"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Puskesmas atau klinik yang lebih banyak merujuk kasus ringan?",
+  "jawab": {
+   "teks": "Per jenis FKTP di Semarang: Dokter Umum rasio rujuk 17,3%, O/E 1,11, 7 perlu perhatian dari 30 dinilai; Klinik Pratama rasio rujuk 19,5%, O/E 1,02, 17 perlu perhatian dari 89 dinilai; Laboratorium rasio rujuk 0,0%, O/E -, 0 perlu perhatian dari 4 dinilai; Puskesmas rasio rujuk 13,0%, O/E 0,87, 1 perlu perhatian dari 37 dinilai. O/E memperhitungkan bauran diagnosis dan jenis FKTP, sehingga perbandingan ini lebih adil daripada rasio rujuk mentah.",
+   "angka": [
+    {
+     "label": "Dokter Umum",
+     "nilai": "1,11"
+    },
+    {
+     "label": "Klinik Pratama",
+     "nilai": "1,02"
+    },
+    {
+     "label": "Laboratorium",
+     "nilai": "-"
+    },
+    {
+     "label": "Puskesmas",
+     "nilai": "0,87"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Modul rujukan",
+     "url": "/modul/rujukan"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "FKTP mana dengan pangsa rujukan non-spesialistik tertinggi?",
+  "jawab": {
+   "teks": "FKTP Semarang dengan pangsa rujukan berdiagnosis non-spesialistik tertinggi: FKTP-8307 (Klinik Pratama; 51,4%, O/E 1,33, Perlu perhatian); FKTP-43845 (Klinik Pratama; 47,4%, O/E 1,02, Dalam rentang wajar); FKTP-44118 (Dokter Umum; 42,1%, O/E 1,16, Dalam rentang wajar). Pangsa ini indikator pendamping; status ditentukan oleh O/E rasio rujuk.",
+   "angka": [
+    {
+     "label": "FKTP-8307",
+     "nilai": "51,4%"
+    },
+    {
+     "label": "FKTP-43845",
+     "nilai": "47,4%"
+    },
+    {
+     "label": "FKTP-44118",
+     "nilai": "42,1%"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Modul rujukan",
+     "url": "/modul/rujukan"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Apa arti O/E dan skor z?",
+  "jawab": {
+   "teks": "O adalah kejadian yang benar-benar terjadi; E adalah kejadian yang wajar bila faskes melayani pasien yang sama seperti rekan sebayanya. O/E = 1 berarti sesuai perkiraan, 1,3 berarti 30% lebih banyak. Skor z mengukur seberapa jauh selisih itu dari kebetulan; di atas 1,96 kecil kemungkinan hanya kebetulan. Faskes ditandai bila O/E > 1,05 dan z > 1,96 dan konsisten di dua paruh periode.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Metodologi",
+     "url": "/metodologi"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Kenapa model readmisi tidak memakai penyeimbangan kelas?",
+  "jawab": {
+   "teks": "Karena Expected sebuah RS adalah penjumlahan peluang readmisi per admisi. Penyeimbangan kelas akan menggeser peluang ke atas dan membesarkan Expected semua RS, sehingga temuan hilang. Yang penting adalah kalibrasi: pada data uji, O/E agregat model 0,97.",
+   "angka": [
+    {
+     "label": "AUC uji",
+     "nilai": "0,810"
+    }
+   ],
+   "tautan": [
+    {
+     "label": "Metodologi",
+     "url": "/metodologi"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Siapa dokter yang paling sering upcoding?",
+  "jawab": {
+   "teks": "SIDAK tidak memuat nama dokter, nama peserta, nomor kartu, maupun nomor SEP. Data Sampel BPJS bersifat anonim dan penilaian dilakukan pada tingkat faskes, bukan orang. Saya bisa menunjukkan RS mana yang pola severity-nya menyimpang dari rekan sebaya.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Modul severity",
+     "url": "/modul/severity"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Apakah RS ini melakukan fraud?",
+  "jawab": {
+   "teks": "SIDAK tidak memvonis. Yang tersedia adalah status statistik: apakah pola klaim RS itu menyimpang dari rekan sebaya dengan bauran kasus serupa (perlu perhatian, diamati, atau wajar). Apakah penyimpangan itu pelanggaran hanya bisa diputuskan lewat audit medis oleh auditor. Sebutkan kode RS-nya untuk melihat kartu penjelasannya.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Antrean audit",
+     "url": "/antrean"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ },
+ {
+  "tanya": "Kenapa RS ini ditandai?",
+  "jawab": {
+   "teks": "Sebutkan kode faskesnya (misalnya RS-31595) agar saya bisa menampilkan kartu penjelasan: kejadian nyata vs wajar, O/E, skor z, penyumbang terbesar, dan pembanding sebaya.",
+   "angka": [],
+   "tautan": [
+    {
+     "label": "Antrean audit",
+     "url": "/antrean"
+    }
+   ],
+   "sumber": "Data Sampel BPJS Kesehatan 2024, SIDAK"
+  }
+ }
+]

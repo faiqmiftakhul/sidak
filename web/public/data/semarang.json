@@ -1,0 +1,1072 @@
+{
+"kota": "KOTA SEMARANG",
+"periode": "Jan-Nov 2024 (Data Sampel BPJS Kesehatan Edisi 2025)",
+"n_faskes_fkrtl": 32,
+"n_faskes_fktp": 285,
+"n_perhatian": 36,
+"n_diamati": 29,
+"rupiah": 698720080,
+"rupiah_tertimbang": 46416205019,
+"per_modul": {
+"rujukan": {
+"n_faskes": 285,
+"n_cukup": 160,
+"n_perhatian": 25,
+"n_diamati": 27,
+"n": 41095,
+"O": 6533,
+"E": 6550.7,
+"rupiah": 134583899,
+"rupiah_tertimbang": 7954372742
+},
+"severity": {
+"n_faskes": 28,
+"n_cukup": 20,
+"n_perhatian": 9,
+"n_diamati": 2,
+"n": 3172,
+"O": 370,
+"E": 243.4,
+"rupiah": 529253935,
+"rupiah_tertimbang": 36049397108
+},
+"fragmentasi": {
+"n_faskes": 32,
+"n_cukup": 22,
+"n_perhatian": 3,
+"n_diamati": 1,
+"n": 22936,
+"O": 4388,
+"E": 5352.7,
+"rupiah": 34882246,
+"rupiah_tertimbang": 2412435169,
+"n_diputihkan": 0
+},
+"readmisi": {
+"n_faskes": 28,
+"n_cukup": 20,
+"n_perhatian": 0,
+"n_diamati": 0,
+"n": 2806,
+"O": 494,
+"E": 536.8,
+"rupiah": 0,
+"rupiah_tertimbang": 0
+}
+},
+"tren": {
+"readmisi": [
+{
+"bln": 1,
+"O": 51,
+"E": 53.0,
+"n": 278,
+"OE": 0.962
+},
+{
+"bln": 2,
+"O": 55,
+"E": 59.8,
+"n": 290,
+"OE": 0.92
+},
+{
+"bln": 3,
+"O": 50,
+"E": 54.3,
+"n": 306,
+"OE": 0.92
+},
+{
+"bln": 4,
+"O": 45,
+"E": 44.0,
+"n": 231,
+"OE": 1.023
+},
+{
+"bln": 5,
+"O": 37,
+"E": 45.6,
+"n": 289,
+"OE": 0.812
+},
+{
+"bln": 6,
+"O": 24,
+"E": 33.0,
+"n": 182,
+"OE": 0.728
+},
+{
+"bln": 7,
+"O": 49,
+"E": 51.7,
+"n": 267,
+"OE": 0.947
+},
+{
+"bln": 8,
+"O": 49,
+"E": 51.3,
+"n": 242,
+"OE": 0.955
+},
+{
+"bln": 9,
+"O": 37,
+"E": 40.9,
+"n": 235,
+"OE": 0.904
+},
+{
+"bln": 10,
+"O": 53,
+"E": 58.7,
+"n": 257,
+"OE": 0.903
+},
+{
+"bln": 11,
+"O": 44,
+"E": 44.7,
+"n": 229,
+"OE": 0.984
+}
+],
+"severity": [
+{
+"bln": 1,
+"O": 46,
+"E": 26.2,
+"n": 293,
+"OE": 1.758
+},
+{
+"bln": 2,
+"O": 41,
+"E": 23.4,
+"n": 298,
+"OE": 1.75
+},
+{
+"bln": 3,
+"O": 39,
+"E": 19.6,
+"n": 314,
+"OE": 1.985
+},
+{
+"bln": 4,
+"O": 31,
+"E": 17.7,
+"n": 240,
+"OE": 1.748
+},
+{
+"bln": 5,
+"O": 36,
+"E": 22.6,
+"n": 297,
+"OE": 1.592
+},
+{
+"bln": 6,
+"O": 27,
+"E": 16.5,
+"n": 192,
+"OE": 1.636
+},
+{
+"bln": 7,
+"O": 25,
+"E": 19.1,
+"n": 272,
+"OE": 1.309
+},
+{
+"bln": 8,
+"O": 30,
+"E": 21.6,
+"n": 254,
+"OE": 1.388
+},
+{
+"bln": 9,
+"O": 26,
+"E": 16.9,
+"n": 245,
+"OE": 1.539
+},
+{
+"bln": 10,
+"O": 37,
+"E": 23.2,
+"n": 268,
+"OE": 1.597
+},
+{
+"bln": 11,
+"O": 21,
+"E": 23.4,
+"n": 264,
+"OE": 0.896
+},
+{
+"bln": 12,
+"O": 11,
+"E": 12.8,
+"n": 235,
+"OE": 0.857
+}
+],
+"fragmentasi": [
+{
+"bln": 1,
+"O": 359,
+"E": 482.9,
+"n": 2052,
+"OE": 0.743
+},
+{
+"bln": 2,
+"O": 330,
+"E": 444.8,
+"n": 1916,
+"OE": 0.742
+},
+{
+"bln": 3,
+"O": 384,
+"E": 438.0,
+"n": 1909,
+"OE": 0.877
+},
+{
+"bln": 4,
+"O": 291,
+"E": 402.5,
+"n": 1737,
+"OE": 0.723
+},
+{
+"bln": 5,
+"O": 371,
+"E": 443.8,
+"n": 1928,
+"OE": 0.836
+},
+{
+"bln": 6,
+"O": 303,
+"E": 391.4,
+"n": 1677,
+"OE": 0.774
+},
+{
+"bln": 7,
+"O": 444,
+"E": 491.4,
+"n": 2064,
+"OE": 0.904
+},
+{
+"bln": 8,
+"O": 411,
+"E": 463.5,
+"n": 1966,
+"OE": 0.887
+},
+{
+"bln": 9,
+"O": 403,
+"E": 456.3,
+"n": 1924,
+"OE": 0.883
+},
+{
+"bln": 10,
+"O": 428,
+"E": 496.5,
+"n": 2137,
+"OE": 0.862
+},
+{
+"bln": 11,
+"O": 352,
+"E": 436.9,
+"n": 1864,
+"OE": 0.806
+},
+{
+"bln": 12,
+"O": 312,
+"E": 405.1,
+"n": 1762,
+"OE": 0.77
+}
+],
+"rujukan": [
+{
+"bln": 1,
+"O": 573,
+"E": 542.4,
+"n": 3653,
+"OE": 1.056
+},
+{
+"bln": 2,
+"O": 560,
+"E": 541.1,
+"n": 3346,
+"OE": 1.035
+},
+{
+"bln": 3,
+"O": 505,
+"E": 478.1,
+"n": 3229,
+"OE": 1.056
+},
+{
+"bln": 4,
+"O": 500,
+"E": 468.4,
+"n": 2910,
+"OE": 1.067
+},
+{
+"bln": 5,
+"O": 585,
+"E": 551.9,
+"n": 3266,
+"OE": 1.06
+},
+{
+"bln": 6,
+"O": 515,
+"E": 513.5,
+"n": 3047,
+"OE": 1.003
+},
+{
+"bln": 7,
+"O": 549,
+"E": 589.8,
+"n": 3571,
+"OE": 0.931
+},
+{
+"bln": 8,
+"O": 524,
+"E": 549.3,
+"n": 3505,
+"OE": 0.954
+},
+{
+"bln": 9,
+"O": 556,
+"E": 559.8,
+"n": 3531,
+"OE": 0.993
+},
+{
+"bln": 10,
+"O": 596,
+"E": 621.4,
+"n": 3890,
+"OE": 0.959
+},
+{
+"bln": 11,
+"O": 549,
+"E": 590.0,
+"n": 3638,
+"OE": 0.93
+},
+{
+"bln": 12,
+"O": 521,
+"E": 544.7,
+"n": 3509,
+"OE": 0.956
+}
+]
+},
+"aliran": {
+"readmisi": [
+{
+"asal": "KOTA SEMARANG",
+"n": 1604,
+"O": 169,
+"E": 207.0
+},
+{
+"asal": "DEMAK",
+"n": 225,
+"O": 48,
+"E": 43.9
+},
+{
+"asal": "GROBOGAN",
+"n": 126,
+"O": 45,
+"E": 39.8
+},
+{
+"asal": "KENDAL",
+"n": 122,
+"O": 29,
+"E": 32.6
+},
+{
+"asal": "SEMARANG",
+"n": 106,
+"O": 21,
+"E": 23.5
+},
+{
+"asal": "PATI",
+"n": 65,
+"O": 26,
+"E": 24.4
+},
+{
+"asal": "JEPARA",
+"n": 57,
+"O": 17,
+"E": 20.9
+},
+{
+"asal": "KUDUS",
+"n": 39,
+"O": 9,
+"E": 10.4
+},
+{
+"asal": "KOTA SALATIGA",
+"n": 38,
+"O": 20,
+"E": 18.9
+},
+{
+"asal": "BREBES",
+"n": 38,
+"O": 23,
+"E": 22.3
+},
+{
+"asal": "BLORA",
+"n": 38,
+"O": 7,
+"E": 9.4
+},
+{
+"asal": "PEMALANG",
+"n": 29,
+"O": 12,
+"E": 10.9
+},
+{
+"asal": "REMBANG",
+"n": 21,
+"O": 3,
+"E": 4.1
+},
+{
+"asal": "TEGAL",
+"n": 19,
+"O": 5,
+"E": 5.2
+},
+{
+"asal": "PEKALONGAN",
+"n": 19,
+"O": 7,
+"E": 6.6
+},
+{
+"asal": "NGAWI",
+"n": 19,
+"O": 12,
+"E": 10.9
+},
+{
+"asal": "BATANG",
+"n": 18,
+"O": 1,
+"E": 3.2
+},
+{
+"asal": "KOTA PEKALONGAN",
+"n": 13,
+"O": 0,
+"E": 1.8
+},
+{
+"asal": "WONOSOBO",
+"n": 10,
+"O": 8,
+"E": 6.5
+},
+{
+"asal": "BOYOLALI",
+"n": 10,
+"O": 1,
+"E": 1.9
+},
+{
+"asal": "TEMANGGUNG",
+"n": 9,
+"O": 3,
+"E": 2.1
+},
+{
+"asal": "KEBUMEN",
+"n": 8,
+"O": 1,
+"E": 1.1
+},
+{
+"asal": "BANYUMAS",
+"n": 8,
+"O": 1,
+"E": 1.0
+},
+{
+"asal": "KLATEN",
+"n": 8,
+"O": 3,
+"E": 4.2
+},
+{
+"asal": "PURBALINGGA",
+"n": 7,
+"O": 3,
+"E": 1.0
+},
+{
+"asal": "KOTA TEGAL",
+"n": 7,
+"O": 0,
+"E": 0.3
+},
+{
+"asal": "MAGELANG",
+"n": 7,
+"O": 0,
+"E": 0.3
+},
+{
+"asal": "SUKOHARJO",
+"n": 7,
+"O": 2,
+"E": 0.9
+},
+{
+"asal": "PURWOREJO",
+"n": 7,
+"O": 0,
+"E": 0.8
+},
+{
+"asal": "SLEMAN",
+"n": 6,
+"O": 0,
+"E": 0.6
+},
+{
+"asal": "KOTA MAKASSAR",
+"n": 5,
+"O": 4,
+"E": 2.9
+}
+],
+"rujukan": [
+{
+"asal": "KOTA SEMARANG",
+"n": 19987,
+"tertimbang": 1331390
+},
+{
+"asal": "DEMAK",
+"n": 914,
+"tertimbang": 63136
+},
+{
+"asal": "KENDAL",
+"n": 590,
+"tertimbang": 37559
+},
+{
+"asal": "SEMARANG",
+"n": 231,
+"tertimbang": 21734
+},
+{
+"asal": "SRAGEN",
+"n": 38,
+"tertimbang": 1152
+},
+{
+"asal": "KLATEN",
+"n": 28,
+"tertimbang": 2137
+},
+{
+"asal": "KOTA JAKARTA SELATAN",
+"n": 23,
+"tertimbang": 1002
+},
+{
+"asal": "KOTA YOGYAKARTA",
+"n": 15,
+"tertimbang": 1014
+},
+{
+"asal": "GROBOGAN",
+"n": 15,
+"tertimbang": 1364
+},
+{
+"asal": "REMBANG",
+"n": 11,
+"tertimbang": 157
+},
+{
+"asal": "KOTA TEGAL",
+"n": 10,
+"tertimbang": 687
+},
+{
+"asal": "SLEMAN",
+"n": 9,
+"tertimbang": 735
+},
+{
+"asal": "KOTA MEDAN",
+"n": 9,
+"tertimbang": 8
+},
+{
+"asal": "BLORA",
+"n": 7,
+"tertimbang": 377
+},
+{
+"asal": "BOYOLALI",
+"n": 7,
+"tertimbang": 513
+},
+{
+"asal": "PATI",
+"n": 7,
+"tertimbang": 23
+},
+{
+"asal": "KOTA JAKARTA BARAT",
+"n": 6,
+"tertimbang": 60
+},
+{
+"asal": "KOTA JAKARTA PUSAT",
+"n": 6,
+"tertimbang": 86
+},
+{
+"asal": "KOTA PEKALONGAN",
+"n": 6,
+"tertimbang": 18
+},
+{
+"asal": "PEKALONGAN",
+"n": 6,
+"tertimbang": 419
+},
+{
+"asal": "KUDUS",
+"n": 6,
+"tertimbang": 131
+},
+{
+"asal": "KOTA SURAKARTA",
+"n": 5,
+"tertimbang": 272
+},
+{
+"asal": "PURBALINGGA",
+"n": 5,
+"tertimbang": 57
+}
+],
+"pangsa_luar_kota_ritl": 42.8
+},
+"risiko_tinggi": [
+{
+"id": "P-0001",
+"faskes": "91621",
+"umur": 53,
+"cbg": "N-4-15-I",
+"dx": "R33",
+"los": 0,
+"riw_ritl": 0,
+"p": 0.9,
+"bln": 11
+},
+{
+"id": "P-0002",
+"faskes": "31595",
+"umur": 50,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.9,
+"bln": 10
+},
+{
+"id": "P-0003",
+"faskes": "31595",
+"umur": 60,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.89,
+"bln": 11
+},
+{
+"id": "P-0004",
+"faskes": "31595",
+"umur": 60,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.89,
+"bln": 10
+},
+{
+"id": "P-0005",
+"faskes": "31595",
+"umur": 33,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 1,
+"riw_ritl": 0,
+"p": 0.88,
+"bln": 10
+},
+{
+"id": "P-0006",
+"faskes": "31595",
+"umur": 50,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.88,
+"bln": 11
+},
+{
+"id": "P-0007",
+"faskes": "31595",
+"umur": 50,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.88,
+"bln": 10
+},
+{
+"id": "P-0008",
+"faskes": "31595",
+"umur": 59,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 5,
+"riw_ritl": 1,
+"p": 0.87,
+"bln": 10
+},
+{
+"id": "P-0009",
+"faskes": "31595",
+"umur": 61,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.84,
+"bln": 10
+},
+{
+"id": "P-0010",
+"faskes": "31595",
+"umur": 61,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.84,
+"bln": 11
+},
+{
+"id": "P-0011",
+"faskes": "31595",
+"umur": 60,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.84,
+"bln": 11
+},
+{
+"id": "P-0012",
+"faskes": "31598",
+"umur": 65,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 1,
+"riw_ritl": 1,
+"p": 0.83,
+"bln": 10
+},
+{
+"id": "P-0013",
+"faskes": "31595",
+"umur": 59,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 6,
+"riw_ritl": 1,
+"p": 0.83,
+"bln": 10
+},
+{
+"id": "P-0014",
+"faskes": "31600",
+"umur": 42,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.82,
+"bln": 11
+},
+{
+"id": "P-0015",
+"faskes": "31598",
+"umur": 65,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 1,
+"p": 0.8,
+"bln": 10
+},
+{
+"id": "P-0016",
+"faskes": "31595",
+"umur": 60,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 2,
+"p": 0.8,
+"bln": 10
+},
+{
+"id": "P-0017",
+"faskes": "31595",
+"umur": 60,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 2,
+"p": 0.8,
+"bln": 11
+},
+{
+"id": "P-0018",
+"faskes": "31600",
+"umur": 61,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.8,
+"bln": 11
+},
+{
+"id": "P-0019",
+"faskes": "31600",
+"umur": 61,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 1,
+"p": 0.8,
+"bln": 10
+},
+{
+"id": "P-0020",
+"faskes": "31600",
+"umur": 42,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.8,
+"bln": 10
+},
+{
+"id": "P-0021",
+"faskes": "31600",
+"umur": 41,
+"cbg": "C-4-13-I",
+"dx": "Z51",
+"los": 2,
+"riw_ritl": 0,
+"p": 0.8,
+"bln": 10
+},
+{
+"id": "P-0022",
+"faskes": "31600",
+"umur": 61,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.79,
+"bln": 10
+},
+{
+"id": "P-0023",
+"faskes": "31595",
+"umur": 35,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.79,
+"bln": 11
+},
+{
+"id": "P-0024",
+"faskes": "31595",
+"umur": 35,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.79,
+"bln": 11
+},
+{
+"id": "P-0025",
+"faskes": "31595",
+"umur": 35,
+"cbg": "C-4-13-II",
+"dx": "Z51",
+"los": 3,
+"riw_ritl": 0,
+"p": 0.79,
+"bln": 10
+}
+],
+"metrik": {
+"readmisi": {
+"n_latih": 94599,
+"n_uji": 78727,
+"iterasi": 81,
+"auc": 0.81,
+"auc_strata": 0.759,
+"oe_agregat_uji": 0.969,
+"base_rate": 13.6,
+"biaya_per_kejadian": 5698402,
+"n_dikecualikan_meninggal": 5085,
+"n_dikecualikan_jendela": 15800
+},
+"severity": {
+"n_latih": 97080,
+"n_uji": 97131,
+"iterasi": 115,
+"auc": 0.871,
+"pangsa_iii_nasional": 4.8,
+"delta_tarif_median": 2938911,
+"oe_agregat_uji": 0.905
+},
+"fragmentasi": {
+"n_kunjungan": 1503675,
+"rate_nasional_7hr": 34.8,
+"pangsa_putih_nasional": 17.5,
+"rate_nasional_setelah_putih": 23.8,
+"biaya_per_kejadian_median": 249525
+},
+"rujukan": {
+"n_kunjungan": 2596846,
+"rasio_rujuk_nasional": 15.1,
+"pangsa_nonspes_nasional": 18.1,
+"biaya_hilir_per_rujukan": 312789,
+"n_diagnosis_nonspes": 40,
+"top_dx_rujukan_semarang": [
+{
+"dx": "E11",
+"n": 486
+},
+{
+"dx": "H52",
+"n": 344
+},
+{
+"dx": "I50",
+"n": 268
+},
+{
+"dx": "I25",
+"n": 222
+},
+{
+"dx": "K04",
+"n": 214
+},
+{
+"dx": "I11",
+"n": 170
+},
+{
+"dx": "K01",
+"n": 143
+},
+{
+"dx": "H54",
+"n": 136
+},
+{
+"dx": "I64",
+"n": 122
+},
+{
+"dx": "I15",
+"n": 117
+}
+]
+}
+},
+"min_n": {
+"readmisi": 30,
+"severity": 30,
+"fragmentasi": 100,
+"rujukan": 100
+},
+"nomor_modul": {
+"rujukan": 3,
+"severity": 4,
+"fragmentasi": 9,
+"readmisi": 16
+}
+}

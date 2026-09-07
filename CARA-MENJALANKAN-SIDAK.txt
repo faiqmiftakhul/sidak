@@ -1,0 +1,199 @@
+================================================================================
+CARA MENJALANKAN APLIKASI SIDAK DI LOCALHOST
+Sistem Deteksi Dini Pola Klaim Tidak Wajar di Fasilitas Kesehatan
+Demo Kota Semarang - Healthkathon BPJS Kesehatan 2026
+================================================================================
+
+Semua perintah di bawah ditulis untuk PowerShell di Windows.
+Folder proyek:
+  C:\Users\Lenovo\OneDrive\Documents\Cursor Projects\Healthkathon BPJS\sidak
+
+
+--------------------------------------------------------------------------------
+A. CARA TERCEPAT (data sudah dibangun, tinggal jalankan)
+--------------------------------------------------------------------------------
+
+Data indikator, peta, dan jawaban cadangan SUDAH ADA di web\public\data dan
+web\dist\data. Jadi cukup nyalakan servernya:
+
+  1. Buka PowerShell, masuk ke folder api:
+
+       cd "C:\Users\Lenovo\OneDrive\Documents\Cursor Projects\Healthkathon BPJS\sidak\api"
+
+  2. (Opsional) pasang kunci API supaya asisten "Tanya SIDAK" hidup:
+
+       $env:ANTHROPIC_API_KEY = "sk-ant-..."
+
+     Tanpa kunci ini aplikasi tetap jalan penuh; hanya chat yang jatuh ke
+     jawaban tersimpan (mode luring) dan /api/chat membalas 503.
+
+  3. Jalankan server:
+
+       uvicorn main:app --port 8000
+
+  4. Buka di peramban:
+
+       http://127.0.0.1:8000
+
+  5. Menghentikan server: tekan Ctrl+C di jendela PowerShell tadi.
+
+Satu server ini melayani dua hal sekaligus: antarmuka React hasil build
+(web\dist) dan seluruh endpoint /api. Tidak perlu menyalakan apa pun yang lain.
+
+
+--------------------------------------------------------------------------------
+B. MODE PENGEMBANGAN ANTARMUKA (hot reload saat mengubah React)
+--------------------------------------------------------------------------------
+
+Butuh DUA jendela PowerShell yang menyala bersamaan.
+
+  Jendela 1 - backend:
+
+       cd "C:\Users\Lenovo\OneDrive\Documents\Cursor Projects\Healthkathon BPJS\sidak\api"
+       $env:ANTHROPIC_API_KEY = "sk-ant-..."     # opsional
+       uvicorn main:app --port 8000 --reload
+
+  Jendela 2 - frontend Vite:
+
+       cd "C:\Users\Lenovo\OneDrive\Documents\Cursor Projects\Healthkathon BPJS\sidak\web"
+       npm run dev
+
+  Lalu buka:  http://127.0.0.1:5173
+
+Vite sudah dikonfigurasi (web\vite.config.ts) untuk meneruskan semua permintaan
+/api ke http://127.0.0.1:8000, jadi chat dan alat tetap berfungsi di port 5173.
+
+Setelah selesai mengubah antarmuka, bangun ulang agar port 8000 ikut memakai
+versi terbaru:
+
+       cd "C:\Users\Lenovo\OneDrive\Documents\Cursor Projects\Healthkathon BPJS\sidak\web"
+       npm run build
+
+
+--------------------------------------------------------------------------------
+C. MEMERIKSA SERVER SUDAH BENAR
+--------------------------------------------------------------------------------
+
+Di PowerShell lain:
+
+       curl.exe http://127.0.0.1:8000/api/sehat
+
+Balasan yang benar kira-kira:
+
+       {"ok":true,"faskes":3721,"model":"claude-opus-5","asisten":true}
+
+  - "faskes"  : jumlah faskes yang termuat (0 berarti data belum dibangun)
+  - "asisten" : true bila ANTHROPIC_API_KEY terbaca, false bila tidak
+
+Menguji satu alat baca-saja tanpa lewat chat:
+
+       curl.exe "http://127.0.0.1:8000/api/alat/daftar_temuan?wilayah=semarang&jumlah=5"
+       curl.exe "http://127.0.0.1:8000/api/alat/ringkas_wilayah"
+
+Daftar alat yang tersedia: cari_faskes, daftar_temuan, jelaskan_temuan,
+ambil_indikator, bandingkan_kabkota, aliran_pasien, demografi_kecamatan,
+ringkas_wilayah, metodologi.
+
+
+--------------------------------------------------------------------------------
+D. BILA HARUS MEMBANGUN ULANG DATA DARI NOL
+--------------------------------------------------------------------------------
+
+Hanya perlu bila data JSON hilang, atau Data Sampel diganti. Prasyarat:
+Python 3.11+ (pandas, scikit-learn, pyarrow, fastapi, uvicorn, anthropic) dan
+Node 20+. Data Sampel BPJS diletakkan di "..\Data sampel CSV\reguler\".
+
+       cd "C:\Users\Lenovo\OneDrive\Documents\Cursor Projects\Healthkathon BPJS\sidak"
+
+  1. Geometri dan data terbuka (sekali saja; lihat sumber_data_terbuka.md
+     untuk asal berkas gadm2.zip, gadm3.zip, osm.json):
+
+       python pipeline\geo_prep.py <folder berisi gadm2.zip, gadm3.zip, osm.json>
+
+  2. Indikator empat modul (sekitar 10 menit pada jalan pertama; hasil baca CSV
+     di-cache di pipeline\_cache):
+
+       python pipeline\build.py
+
+  3. Jawaban tersimpan untuk mode luring:
+
+       cd api
+       python buat_cadangan.py
+       cd ..
+
+  4. Bangun antarmuka:
+
+       cd web
+       npm install
+       npm run build
+       cd ..
+
+  5. Lanjut ke bagian A.
+
+
+--------------------------------------------------------------------------------
+E. PENGATURAN LINGKUNGAN
+--------------------------------------------------------------------------------
+
+  ANTHROPIC_API_KEY   kunci Anthropic untuk asisten Tanya SIDAK.
+                      Kosong = aplikasi tetap jalan, chat memakai jawaban
+                      tersimpan.
+
+  SIDAK_MODEL         model asisten, bawaan "claude-opus-5".
+                      Contoh mengganti:
+                        $env:SIDAK_MODEL = "claude-sonnet-5"
+
+Kedua variabel di atas hanya berlaku di jendela PowerShell tempat diketik.
+Untuk menyimpannya permanen bagi pengguna ini:
+
+       setx ANTHROPIC_API_KEY "sk-ant-..."
+
+(buka jendela PowerShell baru setelah setx agar terbaca)
+
+
+--------------------------------------------------------------------------------
+F. MASALAH YANG SERING MUNCUL
+--------------------------------------------------------------------------------
+
+"uvicorn: The term 'uvicorn' is not recognized"
+    Jalankan lewat modul Python:
+       python -m uvicorn main:app --port 8000
+
+"Address already in use" / port 8000 sudah dipakai
+    Cari dan hentikan prosesnya:
+       netstat -ano | findstr :8000
+       taskkill /PID <nomor PID> /F
+    Atau pakai port lain: uvicorn main:app --port 8010
+    (bila memakai port lain, mode dev di bagian B perlu penyesuaian proxy di
+    web\vite.config.ts)
+
+Halaman kosong / peta tidak muncul di http://127.0.0.1:8000
+    Berarti web\dist belum dibangun. Jalankan:
+       cd ..\web ; npm run build
+
+FileNotFoundError saat server dinyalakan
+    Data JSON belum ada di web\public\data. Jalankan bagian D.
+
+Chat menjawab "ANTHROPIC_API_KEY belum diatur" (HTTP 503)
+    Kunci belum terpasang di jendela tempat uvicorn berjalan. Pasang dengan
+    $env:ANTHROPIC_API_KEY lalu nyalakan ulang server. Ini bukan kerusakan:
+    demo dirancang tetap bisa berjalan tanpa kunci.
+
+Peramban menampilkan versi lama setelah perubahan antarmuka
+    npm run build lalu muat ulang paksa (Ctrl+F5).
+
+Alamat 127.0.0.1 lebih aman dipakai daripada localhost bila ada resolusi IPv6
+yang lambat di Windows.
+
+
+--------------------------------------------------------------------------------
+G. RINGKASAN ALAMAT
+--------------------------------------------------------------------------------
+
+  http://127.0.0.1:8000                     aplikasi lengkap (produksi lokal)
+  http://127.0.0.1:5173                     antarmuka mode pengembangan
+  http://127.0.0.1:8000/api/sehat           status server
+  http://127.0.0.1:8000/api/alat/<nama>     akses langsung satu alat
+  http://127.0.0.1:8000/api/chat            asisten Tanya SIDAK (POST)
+
+================================================================================

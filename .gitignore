@@ -1,0 +1,22 @@
+# Dependensi dan hasil build
+node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Data mentah dan cache — Data Sampel BPJS Kesehatan tidak disertakan di repositori
+pipeline/_cache/
+*.parquet
+*.csv
+
+# Log dan berkas sementara
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
