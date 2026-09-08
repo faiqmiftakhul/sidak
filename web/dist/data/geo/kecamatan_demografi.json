@@ -1,0 +1,201 @@
+{
+ "sumber": {
+  "demografi": "BPS, Kota Semarang Dalam Angka 2026 (via Wikipedia, diakses 5 Sep 2026)",
+  "faskes": "© OpenStreetMap contributors (Overpass API, diakses 5 Sep 2026)",
+  "batas": "GADM 4.1 (gadm.org), pemakaian non-komersial"
+ },
+ "kecamatan": [
+  {
+   "kecamatan": "Banyumanik",
+   "kode_bps": "3374030",
+   "luas_km2": 29.74,
+   "penduduk_2020": 142076,
+   "penduduk_2025": 144087,
+   "kepadatan_2025": 4845,
+   "pertumbuhan_2020_2025_pct": 1.4,
+   "rs": 2,
+   "klinik": 45,
+   "faskes_per_100rb": 32.6
+  },
+  {
+   "kecamatan": "Candisari",
+   "kode_bps": "3374060",
+   "luas_km2": 6.4,
+   "penduduk_2020": 75456,
+   "penduduk_2025": 75396,
+   "kepadatan_2025": 11781,
+   "pertumbuhan_2020_2025_pct": -0.1,
+   "rs": 1,
+   "klinik": 19,
+   "faskes_per_100rb": 26.5
+  },
+  {
+   "kecamatan": "Gajahmungkur",
+   "kode_bps": "3374040",
+   "luas_km2": 9.34,
+   "penduduk_2020": 56232,
+   "penduduk_2025": 56328,
+   "kepadatan_2025": 6031,
+   "pertumbuhan_2020_2025_pct": 0.2,
+   "rs": 3,
+   "klinik": 25,
+   "faskes_per_100rb": 49.7
+  },
+  {
+   "kecamatan": "Gayamsari",
+   "kode_bps": "3374100",
+   "luas_km2": 6.22,
+   "penduduk_2020": 70261,
+   "penduduk_2025": 70381,
+   "kepadatan_2025": 11315,
+   "pertumbuhan_2020_2025_pct": 0.2,
+   "rs": 1,
+   "klinik": 28,
+   "faskes_per_100rb": 41.2
+  },
+  {
+   "kecamatan": "Genuk",
+   "kode_bps": "3374090",
+   "luas_km2": 25.98,
+   "penduduk_2020": 123310,
+   "penduduk_2025": 141033,
+   "kepadatan_2025": 5429,
+   "pertumbuhan_2020_2025_pct": 14.4,
+   "rs": 2,
+   "klinik": 29,
+   "faskes_per_100rb": 22.0
+  },
+  {
+   "kecamatan": "Gunungpati",
+   "kode_bps": "3374020",
+   "luas_km2": 58.27,
+   "penduduk_2020": 98023,
+   "penduduk_2025": 102429,
+   "kepadatan_2025": 1758,
+   "pertumbuhan_2020_2025_pct": 4.5,
+   "rs": 1,
+   "klinik": 58,
+   "faskes_per_100rb": 57.6
+  },
+  {
+   "kecamatan": "Mijen",
+   "kode_bps": "3374010",
+   "luas_km2": 56.52,
+   "penduduk_2020": 80906,
+   "penduduk_2025": 96357,
+   "kepadatan_2025": 1705,
+   "pertumbuhan_2020_2025_pct": 19.1,
+   "rs": 1,
+   "klinik": 22,
+   "faskes_per_100rb": 23.9
+  },
+  {
+   "kecamatan": "Ngaliyan",
+   "kode_bps": "3374160",
+   "luas_km2": 42.99,
+   "penduduk_2020": 141727,
+   "penduduk_2025": 147797,
+   "kepadatan_2025": 3438,
+   "pertumbuhan_2020_2025_pct": 4.3,
+   "rs": 2,
+   "klinik": 49,
+   "faskes_per_100rb": 34.5
+  },
+  {
+   "kecamatan": "Pedurungan",
+   "kode_bps": "3374080",
+   "luas_km2": 21.11,
+   "penduduk_2020": 193151,
+   "penduduk_2025": 198452,
+   "kepadatan_2025": 9401,
+   "pertumbuhan_2020_2025_pct": 2.7,
+   "rs": 1,
+   "klinik": 60,
+   "faskes_per_100rb": 30.7
+  },
+  {
+   "kecamatan": "Semarang Barat",
+   "kode_bps": "3374140",
+   "luas_km2": 21.68,
+   "penduduk_2020": 148879,
+   "penduduk_2025": 149357,
+   "kepadatan_2025": 6889,
+   "pertumbuhan_2020_2025_pct": 0.3,
+   "rs": 3,
+   "klinik": 51,
+   "faskes_per_100rb": 36.2
+  },
+  {
+   "kecamatan": "Semarang Selatan",
+   "kode_bps": "3374050",
+   "luas_km2": 5.95,
+   "penduduk_2020": 62030,
+   "penduduk_2025": 61981,
+   "kepadatan_2025": 10417,
+   "pertumbuhan_2020_2025_pct": -0.1,
+   "rs": 7,
+   "klinik": 14,
+   "faskes_per_100rb": 33.9
+  },
+  {
+   "kecamatan": "Semarang Tengah",
+   "kode_bps": "3374130",
+   "luas_km2": 5.17,
+   "penduduk_2020": 55064,
+   "penduduk_2025": 55213,
+   "kepadatan_2025": 10679,
+   "pertumbuhan_2020_2025_pct": 0.3,
+   "rs": 1,
+   "klinik": 27,
+   "faskes_per_100rb": 50.7
+  },
+  {
+   "kecamatan": "Semarang Timur",
+   "kode_bps": "3374110",
+   "luas_km2": 5.42,
+   "penduduk_2020": 66302,
+   "penduduk_2025": 66482,
+   "kepadatan_2025": 12266,
+   "pertumbuhan_2020_2025_pct": 0.3,
+   "rs": 3,
+   "klinik": 23,
+   "faskes_per_100rb": 39.1
+  },
+  {
+   "kecamatan": "Semarang Utara",
+   "kode_bps": "3374120",
+   "luas_km2": 11.39,
+   "penduduk_2020": 117605,
+   "penduduk_2025": 117865,
+   "kepadatan_2025": 10348,
+   "pertumbuhan_2020_2025_pct": 0.2,
+   "rs": 0,
+   "klinik": 34,
+   "faskes_per_100rb": 28.8
+  },
+  {
+   "kecamatan": "Tembalang",
+   "kode_bps": "3374070",
+   "luas_km2": 39.47,
+   "penduduk_2020": 189680,
+   "penduduk_2025": 204865,
+   "kepadatan_2025": 5190,
+   "pertumbuhan_2020_2025_pct": 8.0,
+   "rs": 5,
+   "klinik": 55,
+   "faskes_per_100rb": 29.3
+  },
+  {
+   "kecamatan": "Tugu",
+   "kode_bps": "3374150",
+   "luas_km2": 28.13,
+   "penduduk_2020": 32822,
+   "penduduk_2025": 34398,
+   "kepadatan_2025": 1223,
+   "pertumbuhan_2020_2025_pct": 4.8,
+   "rs": 0,
+   "klinik": 16,
+   "faskes_per_100rb": 46.5
+  }
+ ]
+}

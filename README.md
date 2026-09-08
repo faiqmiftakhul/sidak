@@ -30,7 +30,7 @@ python pipeline/build.py
 # 3. jawaban tersimpan untuk asisten (mode luring)
 cd api && python buat_cadangan.py && cd ..
 
-# 4. antarmuka
+# 4. antarmuka (opsional; hasil build sudah disertakan di web/dist)
 cd web && npm install && npm run build && cd ..
 
 # 5. server (menyajikan dist/ dan /api)
@@ -38,6 +38,8 @@ set ANTHROPIC_API_KEY=...        # opsional; tanpa ini asisten memakai jawaban t
 cd api && uvicorn main:app --port 8000
 # buka http://127.0.0.1:8000
 ```
+
+Hasil build `web/dist` dan data indikator sudah ada di repositori, jadi untuk sekadar menjalankan demo cukup langkah 5.
 
 Pengembangan antarmuka: `cd web && npm run dev` (port 5173, proxy `/api` ke 8000).
 

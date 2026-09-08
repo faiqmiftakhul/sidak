@@ -1,7 +1,8 @@
 # Dependensi dan hasil build
 node_modules/
-web/dist/
 web/tsconfig.tsbuildinfo
+
+# web/dist sengaja DISERTAKAN supaya demo bisa langsung dijalankan tanpa npm build
 
 # Python
 __pycache__/
