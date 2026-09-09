@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
-import { Peringkat, Pill, Tren } from '../components/Common'
-import { Faskes, INFO, KOTA, Modul, STATUS, num, oe, pct, rp, useData } from '../lib/data'
+import { BungkusTabel, Kepala, Peringkat, Pill, Tren } from '../components/Common'
+import { Faskes, INFO, KOTA, Modul, Status, num, oe, pct, rp, useData } from '../lib/data'
+import { usePalet } from '../lib/tema'
 
 const DEF: Record<Modul, { apa: string; kejadian: string; wajar: string; putih: string; sorot: string }> = {
   rujukan: {
@@ -39,6 +40,7 @@ export default function ModulPage() {
   const { m: mm } = useParams()
   const m = (mm ?? 'readmisi') as Modul
   const { faskes, ring } = useData()
+  const palet = usePalet()
   const [wil, setWil] = useState<'semarang' | 'jateng'>('semarang')
   const [putih, setPutih] = useState(true)
   const [nilai, setNilai] = useState<'OE' | 'rate' | 'rupiah'>('OE')
@@ -51,27 +53,26 @@ export default function ModulPage() {
 
   return (
     <>
-      <div className="eyebrow">Modul #{info.nomor}</div>
-      <h1>{info.nama}</h1>
-      <p className="sub">{def.apa}</p>
+      <Kepala eyebrow={`Modul #${info.nomor}`} judul={info.nama} sub={def.apa} />
+
       <div className="grid3">
-        <div className="card"><div className="eyebrow">Kejadian</div><div style={{ fontSize: 13, marginTop: 4 }}>{def.kejadian}</div></div>
-        <div className="card"><div className="eyebrow">Angka wajar (Expected)</div><div style={{ fontSize: 13, marginTop: 4 }}>{def.wajar}</div></div>
-        <div className="card"><div className="eyebrow">Daftar putih & catatan</div><div style={{ fontSize: 13, marginTop: 4 }}>{def.putih} {def.sorot}</div></div>
+        <div className="card"><div className="eyebrow">Kejadian</div><div style={{ fontSize: 13, marginTop: 6, color: 'var(--teks-2)' }}>{def.kejadian}</div></div>
+        <div className="card"><div className="eyebrow">Angka wajar (Expected)</div><div style={{ fontSize: 13, marginTop: 6, color: 'var(--teks-2)' }}>{def.wajar}</div></div>
+        <div className="card"><div className="eyebrow">Daftar putih &amp; catatan</div><div style={{ fontSize: 13, marginTop: 6, color: 'var(--teks-2)' }}>{def.putih} {def.sorot}</div></div>
       </div>
 
-      <div className="grid4" style={{ marginTop: 14 }}>
+      <div className="grid4" style={{ marginTop: 'var(--s3)' }}>
         <div className="card kpi"><div className="l">{info.unit} dinilai di Semarang</div><div className="v">{p.n_cukup}</div><div className="hint">dari {p.n_faskes}; minimum {ring.min_n[m]} {m === 'rujukan' ? 'kunjungan sakit' : m === 'fragmentasi' ? 'kunjungan RJTL' : 'rawat inap'}</div></div>
         <div className="card kpi red"><div className="l">Perlu perhatian</div><div className="v">{p.n_perhatian}</div><div className="hint">{p.n_diamati} diamati{m === 'fragmentasi' && p.n_diputihkan != null ? ` · ${p.n_diputihkan} memutih setelah daftar putih` : ''}</div></div>
         <div className="card kpi"><div className="l">O/E kota</div><div className="v">{oe(p.E > 0 ? p.O / p.E : null)}</div><div className="hint">{num(p.O)} kejadian vs {num(p.E, 1)} wajar</div></div>
         <div className="card kpi"><div className="l">Selisih rupiah</div><div className="v">{rp(p.rupiah)}</div><div className="hint">sampel · ≈ {rp(p.rupiah_tertimbang)} tertimbang</div></div>
       </div>
 
-      <div className="toolbar" style={{ marginTop: 18 }}>
-        <span className={'chip' + (wil === 'semarang' ? ' on' : '')} onClick={() => setWil('semarang')}>Kota Semarang</span>
-        <span className={'chip' + (wil === 'jateng' ? ' on' : '')} onClick={() => setWil('jateng')}>Jawa Tengah (25 teratas)</span>
-        <select value={nilai} onChange={e => setNilai(e.target.value as any)}><option value="OE">Urut O/E</option><option value="rate">Urut angka mentah</option><option value="rupiah">Urut selisih rupiah</option></select>
-        {m === 'fragmentasi' && <label style={{ fontSize: 13 }}><input type="checkbox" checked={putih} onChange={e => setPutih(e.target.checked)} /> Terapkan daftar putih klinis</label>}
+      <div className="toolbar" style={{ marginTop: 'var(--s5)' }} role="group" aria-label="Tampilan peringkat">
+        <button type="button" className={'chip' + (wil === 'semarang' ? ' on' : '')} aria-pressed={wil === 'semarang'} onClick={() => setWil('semarang')}>Kota Semarang</button>
+        <button type="button" className={'chip' + (wil === 'jateng' ? ' on' : '')} aria-pressed={wil === 'jateng'} onClick={() => setWil('jateng')}>Jawa Tengah (25 teratas)</button>
+        <select value={nilai} onChange={e => setNilai(e.target.value as typeof nilai)} aria-label="Dasar pengurutan"><option value="OE">Urut O/E</option><option value="rate">Urut angka mentah</option><option value="rupiah">Urut selisih rupiah</option></select>
+        {m === 'fragmentasi' && <label className="saklar"><input type="checkbox" checked={putih} onChange={e => setPutih(e.target.checked)} /> Terapkan daftar putih klinis</label>}
       </div>
 
       <div className="grid2">
@@ -84,12 +85,12 @@ export default function ModulPage() {
           <h3>Volume vs O/E{sebelum ? ' (sebelum daftar putih)' : ''}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <ScatterChart margin={{ top: 8, right: 16, left: -10, bottom: 4 }}>
-              <CartesianGrid stroke="#ECEEF0" />
-              <XAxis dataKey="x" type="number" name="Volume" tick={{ fontSize: 11 }} scale="log" domain={['auto', 'auto']} allowDataOverflow />
-              <YAxis dataKey="y" type="number" name="O/E" tick={{ fontSize: 11 }} />
+              <CartesianGrid stroke={palet.kisi} />
+              <XAxis dataKey="x" type="number" name="Volume" tick={{ fontSize: 11, fill: palet.sumbu }} stroke={palet.garis} scale="log" domain={['auto', 'auto']} allowDataOverflow />
+              <YAxis dataKey="y" type="number" name="O/E" tick={{ fontSize: 11, fill: palet.sumbu }} stroke={palet.garis} />
               <ZAxis dataKey="z" range={[50, 50]} />
-              <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => { const d = payload?.[0]?.payload; return d ? <div className="card" style={{ padding: '6px 10px', fontSize: 12 }}><b>{d.nama}</b> · {d.kelas}<br />volume {num(d.x)} · O/E {oe(d.y)}<br /><Pill s={d.status} /></div> : null }} />
-              <Scatter data={scatter} isAnimationActive={false} shape={(pr: any) => <circle cx={pr.cx} cy={pr.cy} r={6} fill={STATUS[pr.payload.status as keyof typeof STATUS].warna} stroke="#fff" />} />
+              <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => { const d = payload?.[0]?.payload; return d ? <div className="card" style={{ padding: '8px 10px', fontSize: 12 }}><b>{d.nama}</b> · {d.kelas}<br />volume {num(d.x)} · O/E {oe(d.y)}<br /><Pill s={d.status} /></div> : null }} />
+              <Scatter data={scatter} isAnimationActive={false} shape={(pr: any) => <circle cx={pr.cx} cy={pr.cy} r={6} fill={palet.status[pr.payload.status as Status].warna} stroke={palet.kartu} strokeWidth={1} />} />
             </ScatterChart>
           </ResponsiveContainer>
           <div className="hint">Garis wajar = 1,0. Faskes kecil menyebar lebih lebar; itu sebabnya skor z ikut menentukan status, bukan O/E saja.</div>
@@ -97,43 +98,51 @@ export default function ModulPage() {
       </div>
 
       {m === 'fragmentasi' && (
-        <div className="card" style={{ marginTop: 14 }}>
-          <h3>Sebelum dan sesudah daftar putih klinis (Kota Semarang)</h3>
-          <table className="t">
-            <thead><tr><th>RS</th><th>Kelas</th><th className="num">Pangsa pola klinis wajar</th><th className="num">Angka sebelum</th><th className="num">O/E sebelum</th><th className="num">Angka sesudah</th><th className="num">O/E sesudah</th><th>Status</th></tr></thead>
-            <tbody>{faskes.filter(f => f.kab === KOTA && f.modul.fragmentasi && f.modul.fragmentasi.status !== 'volume_rendah').sort((a, b) => (b.modul.fragmentasi!.OE_sebelum_putih ?? 0) - (a.modul.fragmentasi!.OE_sebelum_putih ?? 0)).map(f => { const h = f.modul.fragmentasi!; const memutih = (h.OE_sebelum_putih ?? 0) > 1.05 && h.status === 'wajar'; return (
-              <tr key={f.id} style={memutih ? { background: '#E6F6EF' } : undefined}><td><Link to={'/faskes/' + f.id}>{f.label}</Link></td><td>{f.kelas_pendek}</td><td className="num">{pct(h.pangsa_putih)}</td><td className="num">{pct(h.rate_sebelum_putih)}</td><td className="num">{oe(h.OE_sebelum_putih)}</td><td className="num">{pct(h.rate)}</td><td className="num"><b>{oe(h.OE)}</b></td><td><Pill s={h.status} />{memutih && <span className="hint"> memutih</span>}</td></tr>) })}</tbody>
-          </table>
+        <div className="card rapat" style={{ marginTop: 'var(--s3)' }}>
+          <h3 style={{ padding: 'var(--s4) var(--s4) 0' }}>Sebelum dan sesudah daftar putih klinis (Kota Semarang)</h3>
+          <BungkusTabel>
+            <table className="t">
+              <thead><tr><th>RS</th><th>Kelas</th><th className="num">Pangsa pola klinis wajar</th><th className="num">Angka sebelum</th><th className="num">O/E sebelum</th><th className="num">Angka sesudah</th><th className="num">O/E sesudah</th><th>Status</th></tr></thead>
+              <tbody>{faskes.filter(f => f.kab === KOTA && f.modul.fragmentasi && f.modul.fragmentasi.status !== 'volume_rendah').sort((a, b) => (b.modul.fragmentasi!.OE_sebelum_putih ?? 0) - (a.modul.fragmentasi!.OE_sebelum_putih ?? 0)).map(f => { const h = f.modul.fragmentasi!; const memutih = (h.OE_sebelum_putih ?? 0) > 1.05 && h.status === 'wajar'; return (
+                <tr key={f.id} style={memutih ? { background: palet.status.wajar.bg } : undefined}><td><Link to={'/faskes/' + f.id}>{f.label}</Link></td><td>{f.kelas_pendek}</td><td className="num">{pct(h.pangsa_putih)}</td><td className="num">{pct(h.rate_sebelum_putih)}</td><td className="num">{oe(h.OE_sebelum_putih)}</td><td className="num">{pct(h.rate)}</td><td className="num"><b>{oe(h.OE)}</b></td><td><Pill s={h.status} />{memutih && <span className="hint"> memutih</span>}</td></tr>) })}</tbody>
+            </table>
+          </BungkusTabel>
         </div>
       )}
 
       {m === 'rujukan' && ring.metrik.rujukan?.top_dx_rujukan_semarang && (
-        <div className="grid2" style={{ marginTop: 14 }}>
+        <div className="grid2" style={{ marginTop: 'var(--s3)' }}>
           <div className="card"><h3>Diagnosis rujukan tersering FKTP Semarang</h3>
-            {ring.metrik.rujukan.top_dx_rujukan_semarang.map((d: any) => <div key={d.dx} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 50px', gap: 8, alignItems: 'center', fontSize: 12, marginBottom: 4 }}><span className="mono">{d.dx}</span><div className="bar"><div style={{ width: (d.n / ring.metrik.rujukan.top_dx_rujukan_semarang[0].n) * 100 + '%', background: '#6A5ACD' }} /></div><span className="num">{num(d.n)}</span></div>)}
+            {ring.metrik.rujukan.top_dx_rujukan_semarang.map((d: any) => <div key={d.dx} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 54px', gap: 10, alignItems: 'center', fontSize: 12, marginBottom: 6 }}><span className="mono">{d.dx}</span><div className="bar"><div style={{ width: (d.n / ring.metrik.rujukan.top_dx_rujukan_semarang[0].n) * 100 + '%', background: palet.modul.rujukan }} /></div><span className="num">{num(d.n)}</span></div>)}
             <div className="hint">Nasional: rasio rujuk {pct(ring.metrik.rujukan.rasio_rujuk_nasional)}; {pct(ring.metrik.rujukan.pangsa_nonspes_nasional)} rujukan berdiagnosis non-spesialistik ({ring.metrik.rujukan.n_diagnosis_nonspes} kode).</div></div>
           <div className="card"><h3>Puskesmas vs klinik vs dokter praktik (Semarang)</h3>
-            <table className="t"><thead><tr><th>Jenis</th><th className="num">FKTP dinilai</th><th className="num">Rasio rujuk</th><th className="num">O/E</th><th className="num">Perlu perhatian</th></tr></thead>
-              <tbody>{Array.from(new Set(rows.filter(f => f.kab === KOTA).map(f => f.kelas_pendek))).map(j => { const g = rows.filter(f => f.kab === KOTA && f.kelas_pendek === j); const O = g.reduce((s, f) => s + f.modul.rujukan!.O, 0), E = g.reduce((s, f) => s + f.modul.rujukan!.E, 0), n = g.reduce((s, f) => s + f.modul.rujukan!.n, 0); return <tr key={j}><td>{j}</td><td className="num">{g.length}</td><td className="num">{pct(n ? (O / n) * 100 : null)}</td><td className="num">{oe(E ? O / E : null)}</td><td className="num">{g.filter(f => f.modul.rujukan!.status === 'perhatian').length}</td></tr> })}</tbody></table></div>
+            <BungkusTabel>
+              <table className="t"><thead><tr><th>Jenis</th><th className="num">FKTP dinilai</th><th className="num">Rasio rujuk</th><th className="num">O/E</th><th className="num">Perlu perhatian</th></tr></thead>
+                <tbody>{Array.from(new Set(rows.filter(f => f.kab === KOTA).map(f => f.kelas_pendek))).map(j => { const g = rows.filter(f => f.kab === KOTA && f.kelas_pendek === j); const O = g.reduce((s, f) => s + f.modul.rujukan!.O, 0), E = g.reduce((s, f) => s + f.modul.rujukan!.E, 0), n = g.reduce((s, f) => s + f.modul.rujukan!.n, 0); return <tr key={j}><td>{j}</td><td className="num">{g.length}</td><td className="num">{pct(n ? (O / n) * 100 : null)}</td><td className="num">{oe(E ? O / E : null)}</td><td className="num">{g.filter(f => f.modul.rujukan!.status === 'perhatian').length}</td></tr> })}</tbody></table>
+            </BungkusTabel></div>
         </div>
       )}
 
       {m === 'readmisi' && (
-        <div className="grid2" style={{ marginTop: 14 }}>
+        <div className="grid2" style={{ marginTop: 'var(--s3)' }}>
           <div className="card"><Tren rows={ring.tren.readmisi} judul="Kota Semarang per bulan: readmisi nyata vs wajar" /></div>
           <div className="card"><h3>Daftar pasien risiko tinggi (pencegahan, anonim)</h3>
-            <div className="hint" style={{ marginBottom: 6 }}>Admisi Okt–Nov 2024 di RS Semarang dengan peluang readmisi tertinggi. Untuk tim pencegahan RS: pastikan rencana pulang dan kontrol. Tanpa identitas.</div>
-            <table className="t" style={{ fontSize: 12 }}><thead><tr><th>ID</th><th>RS</th><th className="num">Umur</th><th>INA-CBG</th><th>Dx</th><th className="num">LOS</th><th className="num">Riw. RITL</th><th className="num">Peluang</th></tr></thead>
-              <tbody>{ring.risiko_tinggi.slice(0, 10).map(r => <tr key={r.id}><td className="mono">{r.id}</td><td><Link to={'/faskes/' + r.faskes}>RS-{r.faskes}</Link></td><td className="num">{r.umur ?? '–'}</td><td className="mono">{r.cbg}</td><td className="mono">{r.dx}</td><td className="num">{r.los}</td><td className="num">{r.riw_ritl}</td><td className="num"><b>{pct(r.p * 100, 0)}</b></td></tr>)}</tbody></table></div>
+            <div className="hint" style={{ marginBottom: 8 }}>Admisi Okt–Nov 2024 di RS Semarang dengan peluang readmisi tertinggi. Untuk tim pencegahan RS: pastikan rencana pulang dan kontrol. Tanpa identitas.</div>
+            <BungkusTabel>
+              <table className="t" style={{ fontSize: 12 }}><thead><tr><th>ID</th><th>RS</th><th className="num">Umur</th><th>INA-CBG</th><th>Dx</th><th className="num">LOS</th><th className="num">Riw. RITL</th><th className="num">Peluang</th></tr></thead>
+                <tbody>{ring.risiko_tinggi.slice(0, 10).map(r => <tr key={r.id}><td className="mono">{r.id}</td><td><Link to={'/faskes/' + r.faskes}>RS-{r.faskes}</Link></td><td className="num">{r.umur ?? '–'}</td><td className="mono">{r.cbg}</td><td className="mono">{r.dx}</td><td className="num">{r.los}</td><td className="num">{r.riw_ritl}</td><td className="num"><b>{pct(r.p * 100, 0)}</b></td></tr>)}</tbody></table>
+            </BungkusTabel></div>
         </div>
       )}
 
       <h2>Semua {info.unit} yang dinilai ({wil === 'semarang' ? 'Kota Semarang' : 'Jawa Tengah'})</h2>
-      <div className="card" style={{ padding: 0 }}>
-        <table className="t">
-          <thead><tr><th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Kelas</th><th className="num">Volume</th><th className="num">Kejadian</th><th className="num">Wajar</th><th className="num">Angka</th><th className="num">O/E</th><th className="num">z</th><th className="num">Selisih</th><th>Status</th></tr></thead>
-          <tbody>{urut.slice(0, 200).map((f: Faskes) => { const h = f.modul[m]!; return <tr key={f.id}><td><Link to={'/faskes/' + f.id}><b>{f.label}</b></Link></td>{wil === 'jateng' && <td>{f.kab}</td>}<td>{f.kelas_pendek}</td><td className="num">{num(h.n)}</td><td className="num">{num(h.O)}</td><td className="num">{num(h.E, 1)}</td><td className="num">{pct(h.rate)}</td><td className="num"><b>{oe(h.OE)}</b></td><td className="num">{h.z == null ? '–' : num(h.z, 2)}</td><td className="num">{rp(h.rupiah)}</td><td><Pill s={h.status} /></td></tr> })}</tbody>
-        </table>
+      <div className="card rapat">
+        <BungkusTabel>
+          <table className="t">
+            <thead><tr><th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Kelas</th><th className="num">Volume</th><th className="num">Kejadian</th><th className="num">Wajar</th><th className="num">Angka</th><th className="num">O/E</th><th className="num">z</th><th className="num">Selisih</th><th>Status</th></tr></thead>
+            <tbody>{urut.slice(0, 200).map((f: Faskes) => { const h = f.modul[m]!; return <tr key={f.id}><td><Link to={'/faskes/' + f.id}><b>{f.label}</b></Link></td>{wil === 'jateng' && <td>{f.kab}</td>}<td>{f.kelas_pendek}</td><td className="num">{num(h.n)}</td><td className="num">{num(h.O)}</td><td className="num">{num(h.E, 1)}</td><td className="num">{pct(h.rate)}</td><td className="num"><b>{oe(h.OE)}</b></td><td className="num">{h.z == null ? '–' : num(h.z, 2)}</td><td className="num">{rp(h.rupiah)}</td><td><Pill s={h.status} /></td></tr> })}</tbody>
+          </table>
+        </BungkusTabel>
       </div>
     </>
   )

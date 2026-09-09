@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import Ikon from './Ikon'
 
 interface Angka { label: string; nilai: string; satuan?: string; sumber?: string }
 interface Tautan { label: string; url: string }
@@ -35,7 +36,7 @@ async function jawabanCadangan(q: string): Promise<Jawaban> {
   return { teks: 'Layanan asisten tidak terjangkau dan pertanyaan ini belum ada di jawaban tersimpan. Coba salah satu saran pertanyaan, atau buka halaman terkait langsung.', cadangan: true }
 }
 
-export default function Chat({ halaman }: { halaman: string }) {
+export default function Chat({ halaman, onTutup }: { halaman: string; onTutup?: () => void }) {
   const [log, setLog] = useState<Pesan[]>([{ role: 'assistant', content: '', jawaban: { teks: 'Halo, saya Tanya SIDAK. Tanyakan apa saja tentang pola klaim di Kota Semarang, misalnya faskes mana yang perlu perhatian, mengapa ditandai, atau berapa estimasi selisih rupiahnya. Saya hanya menjawab dari data agregat yang sudah dihitung dan tidak memuat identitas peserta maupun dokter.' } }])
   const [q, setQ] = useState('')
   const [sibuk, setSibuk] = useState(false)
@@ -64,8 +65,15 @@ export default function Chat({ halaman }: { halaman: string }) {
 
   return (
     <>
-      <div className="chat-head"><div><b>Tanya SIDAK</b><div className="hint">Asisten data · jawaban selalu dari angka yang sama dengan layar</div></div></div>
-      <div className="chat-log">
+      <div className="chat-head">
+        <div style={{ minWidth: 0 }}>
+          <b>Tanya SIDAK</b>
+          <div className="hint">Asisten data · jawaban dari angka yang sama dengan layar</div>
+        </div>
+        {onTutup && <button className="ikon-btn" onClick={onTutup} aria-label="Tutup Tanya SIDAK"><Ikon nama="silang" /></button>}
+      </div>
+
+      <div className="chat-log" role="log" aria-live="polite" aria-label="Percakapan">
         {log.map((p, i) => p.role === 'user'
           ? <div key={i} className="msg u">{p.content}</div>
           : <div key={i} className="msg a">
@@ -74,12 +82,16 @@ export default function Chat({ halaman }: { halaman: string }) {
             {p.jawaban?.tautan && p.jawaban.tautan.length > 0 && <div className="tautan">{p.jawaban.tautan.map((t, k) => <Link key={k} to={t.url}>{t.label} →</Link>)}</div>}
             {(p.jawaban?.sumber || p.jawaban?.cadangan) && <div className="src">{p.jawaban.cadangan ? 'Jawaban tersimpan (mode luring). ' : ''}{p.jawaban.sumber ?? ''}</div>}
           </div>)}
-        {sibuk && <div className="msg a dots"><span /><span /><span /></div>}
+        {sibuk && <div className="msg a dots" aria-label="Menyusun jawaban"><span /><span /><span /></div>}
         <div ref={end} />
       </div>
-      <div className="chat-sug">{saran.map(s => <span key={s} className="chip" onClick={() => kirim(s)}>{s}</span>)}</div>
+
+      <div className="chat-sug">
+        {saran.map(s => <button key={s} type="button" className="chip" onClick={() => kirim(s)} disabled={sibuk}>{s}</button>)}
+      </div>
+
       <form className="chat-in" onSubmit={e => { e.preventDefault(); kirim(q) }}>
-        <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Tulis pertanyaan…" disabled={sibuk} />
+        <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Tulis pertanyaan…" disabled={sibuk} aria-label="Pertanyaan untuk Tanya SIDAK" />
         <button className="btn primary" disabled={sibuk}>Kirim</button>
       </form>
     </>

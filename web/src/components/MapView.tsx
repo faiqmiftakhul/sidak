@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import { Modul, KabModul, useData, judulKab, oe as fOE, pct, rp, num, KOTA, INFO } from '../lib/data'
+import { Palet, usePalet } from '../lib/tema'
 
 export type Tingkat = 'L1' | 'L2' | 'L3'
 export type IndikatorL1 = 'OE' | 'rate' | 'rupiah_tertimbang' | 'n_perhatian'
@@ -13,8 +14,6 @@ export const LABEL_L2: Record<IndikatorL2, string> = {
   penduduk_2025: 'Penduduk 2025', kepadatan_2025: 'Kepadatan (jiwa/km²)', faskes_per_100rb: 'Faskes per 100 ribu penduduk', rs: 'Jumlah RS', pertumbuhan_2020_2025_pct: 'Pertumbuhan penduduk 2020–2025 (%)',
 }
 
-const SEQ = ['#EAF0F6', '#C5D6EA', '#93B3D9', '#5B86BC', '#0D366B']
-const OE_COL = ['#148F63', '#A9C6EA', '#C88A0A', '#B53333']
 const OE_BRK = [0.9, 1.05, 1.2]
 
 function quantiles(vals: number[], k = 5): number[] {
@@ -22,17 +21,17 @@ function quantiles(vals: number[], k = 5): number[] {
   if (!v.length) return []
   return Array.from({ length: k - 1 }, (_, i) => v[Math.floor(((i + 1) * v.length) / k)])
 }
-function warnaSeq(v: number | null | undefined, brk: number[]): string {
-  if (v == null || isNaN(v)) return '#F7F7F4'
+function warnaSeq(v: number | null | undefined, brk: number[], p: Palet): string {
+  if (v == null || isNaN(v)) return p.petaKosong
   let i = 0
   while (i < brk.length && v > brk[i]) i++
-  return SEQ[Math.min(i, SEQ.length - 1)]
+  return p.seq[Math.min(i, p.seq.length - 1)]
 }
-function warnaOE(v: number | null | undefined): string {
-  if (v == null || isNaN(v)) return '#F7F7F4'
+function warnaOE(v: number | null | undefined, p: Palet): string {
+  if (v == null || isNaN(v)) return p.petaKosong
   let i = 0
   while (i < OE_BRK.length && v > OE_BRK[i]) i++
-  return OE_COL[i]
+  return p.oe[i]
 }
 function centroid(g: GeoJSON.Geometry): [number, number] {
   const pts: number[][] = []
@@ -60,6 +59,7 @@ export default function MapView({ tingkat, modul, indL1 = 'OE', indL2 = 'pendudu
   const ready = useRef(false)
   const labels = useRef<maplibregl.Marker[]>([])
   const data = useData()
+  const p = usePalet()
   const cb = useRef({ onPilihKab, onPilihKec })
   cb.current = { onPilihKab, onPilihKec }
 
@@ -116,22 +116,31 @@ export default function MapView({ tingkat, modul, indL1 = 'OE', indL2 = 'pendudu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ---- pembaruan lapisan sesuai props
+  // ---- pembaruan lapisan sesuai props dan tema
   useEffect(() => {
     const m = map.current
     if (!m) return
     const apply = () => {
       const vis = (id: string, on: boolean) => m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
+      // warna dasar yang ikut tema
+      m.setPaintProperty('bg', 'background-color', p.petaLatar)
+      m.setPaintProperty('kab-line', 'line-color', p.petaGaris)
+      m.setPaintProperty('kec-line', 'line-color', p.petaGaris)
+      m.setPaintProperty('kab-sel', 'line-color', p.pilih)
+      m.setPaintProperty('fas-rs', 'circle-color', p.rs)
+      m.setPaintProperty('fas-rs', 'circle-stroke-color', p.kartu)
+      m.setPaintProperty('fas-klinik', 'circle-color', p.klinik)
+      m.setPaintProperty('alir-pt', 'circle-stroke-color', p.kartu)
       // L1: gabungkan indikator kab/kota ke geometri
       const fc: GeoJSON.FeatureCollection = JSON.parse(JSON.stringify(data.geoKab))
       const vals = fc.features.map(f => { const d = data.kab[(f.properties as any).kab]?.[modul]; return d ? (d as any)[indL1] : null })
       const brk = quantiles(vals.filter(v => v != null) as number[])
       fc.features.forEach((f, i) => {
-        const p = f.properties as any
-        const d = data.kab[p.kab]?.[modul]
+        const q = f.properties as any
+        const d = data.kab[q.kab]?.[modul]
         const v = vals[i]
-        p.warna = indL1 === 'OE' ? warnaOE(v) : warnaSeq(v, brk)
-        p.tip = d ? `${INFO[modul].nama}: O/E <b>${fOE(d.OE)}</b> · angka ${pct(d.rate)} · ${d.n_faskes} faskes dinilai, <b>${d.n_perhatian}</b> perlu perhatian<br/>selisih tertimbang ${rp(d.rupiah_tertimbang)}` : 'Tidak ada faskes dengan volume cukup'
+        q.warna = indL1 === 'OE' ? warnaOE(v, p) : warnaSeq(v, brk, p)
+        q.tip = d ? `${INFO[modul].nama}: O/E <b>${fOE(d.OE)}</b> · angka ${pct(d.rate)} · ${d.n_faskes} faskes dinilai, <b>${d.n_perhatian}</b> perlu perhatian<br/>selisih tertimbang ${rp(d.rupiah_tertimbang)}` : 'Tidak ada faskes dengan volume cukup'
       })
       ;(m.getSource('kab') as maplibregl.GeoJSONSource).setData(fc)
       // L2: demografi kecamatan
@@ -139,9 +148,9 @@ export default function MapView({ tingkat, modul, indL1 = 'OE', indL2 = 'pendudu
       const dv = kc.features.map(f => data.demo.kecamatan.find(k => k.kecamatan === (f.properties as any).kecamatan))
       const b2 = quantiles(dv.map(d => (d ? (d as any)[indL2] : null)).filter(v => v != null) as number[])
       kc.features.forEach((f, i) => {
-        const p = f.properties as any, d = dv[i]
-        p.warna = warnaSeq(d ? (d as any)[indL2] : null, b2)
-        p.tip = d ? `Penduduk 2025 <b>${num(d.penduduk_2025)}</b> · ${num(d.kepadatan_2025)} jiwa/km²<br/>RS ${d.rs} · klinik/praktik ${d.klinik} · ${num(d.faskes_per_100rb, 1)} faskes/100 rb` : ''
+        const q = f.properties as any, d = dv[i]
+        q.warna = warnaSeq(d ? (d as any)[indL2] : null, b2, p)
+        q.tip = d ? `Penduduk 2025 <b>${num(d.penduduk_2025)}</b> · ${num(d.kepadatan_2025)} jiwa/km²<br/>RS ${d.rs} · klinik/praktik ${d.klinik} · ${num(d.faskes_per_100rb, 1)} faskes/100 rb` : ''
       })
       ;(m.getSource('kec') as maplibregl.GeoJSONSource).setData(kc)
       // L3: aliran
@@ -155,7 +164,7 @@ export default function MapView({ tingkat, modul, indL1 = 'OE', indL2 = 'pendudu
         const c = cent[r.asal]
         if (!c || r.asal === KOTA) return
         const oeV = 'E' in r && (r as any).E > 0 ? (r as any).O / (r as any).E : null
-        const warna = aliranModul === 'readmisi' ? warnaOE(oeV) : '#6A5ACD'
+        const warna = aliranModul === 'readmisi' ? warnaOE(oeV, p) : p.aliran
         const tip = aliranModul === 'readmisi' ? `${r.n} admisi · readmisi ${(r as any).O} vs wajar ${num((r as any).E, 1)} (O/E ${fOE(oeV)})` : `${r.n} kunjungan rujukan (≈${num((r as any).tertimbang)} tertimbang)`
         feats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [c, tujuan] }, properties: { asal: r.asal, warna, lebar: 1 + (r.n / maxN) * 9, tip } })
         feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { asal: r.asal, warna, r: 3 + (r.n / maxN) * 8, tip } })
@@ -171,17 +180,17 @@ export default function MapView({ tingkat, modul, indL1 = 'OE', indL2 = 'pendudu
       else m.fitBounds([[108.5, -8.4], [111.8, -5.7]], { padding: 20, duration: 600 })
     }
     if (ready.current) apply(); else m.once('sidak:ready', apply)
-  }, [tingkat, modul, indL1, indL2, tampilFaskes, aliranModul, data])
+  }, [tingkat, modul, indL1, indL2, tampilFaskes, aliranModul, data, kecil, p])
 
   const legend = tingkat === 'L2'
-    ? <div className="map-legend"><b>{LABEL_L2[indL2]}</b> (kuintil) <br />{SEQ.map((c, i) => <span key={i} className="sw" style={{ background: c }} />)} rendah → tinggi<br />
-      {tampilFaskes && <><span className="sw" style={{ background: '#B53333', borderRadius: 7 }} />RS &nbsp;<span className="sw" style={{ background: '#148F63', borderRadius: 7 }} />klinik/praktik (OSM)</>}</div>
+    ? <div className="map-legend"><b>{LABEL_L2[indL2]}</b> (kuintil) <br />{p.seq.map((c, i) => <span key={i} className="sw" style={{ background: c }} />)} rendah → tinggi<br />
+      {tampilFaskes && <><span className="sw" style={{ background: p.rs, borderRadius: 7 }} />RS &nbsp;<span className="sw" style={{ background: p.klinik, borderRadius: 7 }} />klinik/praktik (OSM)</>}</div>
     : indL1 === 'OE' || tingkat === 'L3'
       ? <div className="map-legend"><b>{tingkat === 'L3' && aliranModul === 'rujukan' ? 'Aliran rujukan (tebal = jumlah)' : 'Rasio O/E'}</b><br />
         {tingkat === 'L3' && aliranModul === 'rujukan' ? null : <>
-          <span className="sw" style={{ background: OE_COL[0] }} />&lt; 0,90 &nbsp;<span className="sw" style={{ background: OE_COL[1] }} />0,90–1,05<br />
-          <span className="sw" style={{ background: OE_COL[2] }} />1,05–1,20 &nbsp;<span className="sw" style={{ background: OE_COL[3] }} />&gt; 1,20</>}</div>
-      : <div className="map-legend"><b>{LABEL_L1[indL1]}</b> (kuintil)<br />{SEQ.map((c, i) => <span key={i} className="sw" style={{ background: c }} />)} rendah → tinggi</div>
+          <span className="sw" style={{ background: p.oe[0] }} />&lt; 0,90 &nbsp;<span className="sw" style={{ background: p.oe[1] }} />0,90–1,05<br />
+          <span className="sw" style={{ background: p.oe[2] }} />1,05–1,20 &nbsp;<span className="sw" style={{ background: p.oe[3] }} />&gt; 1,20</>}</div>
+      : <div className="map-legend"><b>{LABEL_L1[indL1]}</b> (kuintil)<br />{p.seq.map((c, i) => <span key={i} className="sw" style={{ background: c }} />)} rendah → tinggi</div>
 
   return (
     <div className={'map-wrap' + (kecil ? ' small' : '')}>

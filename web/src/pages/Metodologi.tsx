@@ -1,3 +1,4 @@
+import { BungkusTabel, Kepala } from '../components/Common'
 import { INFO, MODUL, num, oe, pct, rp, useData } from '../lib/data'
 
 export default function Metodologi() {
@@ -5,16 +6,18 @@ export default function Metodologi() {
   const M = ring.metrik
   return (
     <>
-      <div className="eyebrow">Metodologi & data</div>
-      <h1>Bagaimana angka-angka ini dihitung</h1>
-      <p className="sub">Ditulis untuk pembaca awam. Rincian teknis ada di kode pipeline (sidak/pipeline/build.py) dan model (model/readmisi.py, model/severity.py).</p>
+      <Kepala
+        eyebrow="Metodologi & data"
+        judul="Bagaimana angka-angka ini dihitung"
+        sub="Ditulis untuk pembaca awam. Rincian teknis ada di kode pipeline (sidak/pipeline/build.py) dan model (model/readmisi.py, model/severity.py)."
+      />
 
       <div className="card">
         <h3>Satu kerangka untuk empat modul: O/E</h3>
-        <p style={{ fontSize: 13, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--teks-2)' }}>
           Untuk setiap faskes kami hitung <b>Observed (O)</b>, jumlah kejadian yang benar-benar terjadi, dan <b>Expected (E)</b>, jumlah kejadian yang wajar bila faskes itu melayani pasien yang sama persis dengan cara rekan sebayanya. E adalah penjumlahan peluang per kejadian yang dihasilkan model atau tabel standar. <b>O/E</b> = 1,0 berarti sesuai perkiraan; 1,3 berarti 30% lebih banyak dari wajar. <b>Skor z</b> mengukur seberapa jauh selisih itu dari kebetulan (varian binomial Σp(1−p)); di atas 1,96 kecil kemungkinan hanya kebetulan.
         </p>
-        <p style={{ fontSize: 13, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--teks-2)' }}>
           Status <b>Perlu perhatian</b> diberikan bila O/E &gt; 1,05 <u>dan</u> z &gt; 1,96 <u>dan</u> polanya konsisten pada dua paruh periode (bulan ganjil vs genap). Bila melewati ambang tetapi tidak konsisten, atau hanya melewati sebagian ambang, statusnya <b>Diamati</b>. Faskes dengan volume di bawah minimum tidak dinilai. Selisih rupiah = (O − E) × biaya rata-rata per kejadian; nilai <b>tertimbang</b> mengalikan dengan bobot sampel peserta untuk menaksir skala populasi JKN.
         </p>
       </div>
@@ -69,7 +72,8 @@ export default function Metodologi() {
       </div>
 
       <h2>Sumber data</h2>
-      <div className="card">
+      <div className="card rapat">
+        <BungkusTabel>
         <table className="t">
           <thead><tr><th>Data</th><th>Sumber</th><th>Pemakaian</th></tr></thead>
           <tbody>
@@ -79,11 +83,12 @@ export default function Metodologi() {
             <tr><td>Penduduk per kecamatan</td><td>{demo.sumber.demografi}</td><td>Choropleth konteks L2</td></tr>
           </tbody>
         </table>
+        </BungkusTabel>
       </div>
 
       <h2>Privasi dan batasan</h2>
-      <div className="card" style={{ fontSize: 13, lineHeight: 1.6 }}>
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
+      <div className="card" style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--teks-2)' }}>
+        <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 'var(--s2)' }}>
           <li>Tidak ada nomor kartu, nomor SEP, nama peserta, atau nama dokter di layar mana pun, ekspor, maupun asisten. Sampel klaim hanya memuat kolom teknis.</li>
           <li>Kode faskes dalam Data Sampel adalah kode samaran; hasil deteksi tidak dapat dan tidak dikaitkan dengan RS bernama. Titik faskes di peta berasal dari OpenStreetMap sebagai konteks pasokan.</li>
           <li>Data Sampel ±1% peserta membuat pita kepercayaan lebar untuk faskes kecil; itulah alasan skor z dan syarat stabilitas. Pada data penuh, ketidakpastian menyempit sekitar 10 kali.</li>

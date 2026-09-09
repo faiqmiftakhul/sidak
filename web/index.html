@@ -3,7 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="SIDAK — Sistem Deteksi Dini Pola Klaim Tidak Wajar di Fasilitas Kesehatan. Demo Kota Semarang." />
     <title>SIDAK · Kota Semarang</title>
+    <script>
+      // Pasang tema sebelum React menggambar supaya tidak ada kedip putih.
+      (function () {
+        try {
+          var t = localStorage.getItem('sidak_tema')
+          if (t !== 'terang' && t !== 'gelap') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'gelap' : 'terang'
+          document.documentElement.setAttribute('data-tema', t)
+          document.documentElement.style.background = t === 'gelap' ? '#0B1220' : '#F1F4F8'
+        } catch (e) { /* peramban tanpa storage */ }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
