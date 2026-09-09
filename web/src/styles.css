@@ -169,10 +169,6 @@ h3 { font-size: var(--fs-md); line-height: 1.35; font-weight: 600; color: var(--
 .grid2 > *, .grid3 > *, .grid4 > * { min-width: 0; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--space-card); min-width: 0; }
 .card.soft { background: var(--brand-tint); border-color: transparent; }
-.kpi { min-width: 0; }
-.kpi .v { font-size: var(--fs-xl); font-weight: 700; color: var(--brand); line-height: 1.15; margin: 8px 0 4px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.kpi .l { font-size: var(--fs-2xs); font-weight: 500; color: var(--grey); }
-.kpi.red .v { color: var(--perhatian); } .kpi.green .v { color: var(--green); } .kpi.amber .v { color: var(--amber); }
 
 /* ---- v1.7: kartu KPI semantik (tingkatan warna: chip → nilai → kartu tetap putih) ---- */
 .kpi-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid #E2E8F0; border-radius: 10px; background: var(--card); min-width: 0; }
