@@ -1,0 +1,23 @@
+<svg width="178" height="171" viewBox="0 0 178 171" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="36.5" cy="38.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="36.5" cy="95.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="36.5" cy="152.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="141.5" cy="18.5" r="18.5" fill="#D97706"/>
+<circle cx="141.5" cy="95.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="141.5" cy="152.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="89.5" cy="38.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="89.5" cy="95.5" r="18.5" fill="#FFFFFF"/>
+<circle cx="89.5" cy="152.5" r="18.5" fill="#FFFFFF"/>
+<g stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2">
+<line y1="66" x2="11.125" y2="66"/>
+<line x1="18.5415" y1="66" x2="29.6665" y2="66"/>
+<line x1="37.0835" y1="66" x2="48.2085" y2="66"/>
+<line x1="55.625" y1="66" x2="66.75" y2="66"/>
+<line x1="74.1665" y1="66" x2="85.2915" y2="66"/>
+<line x1="92.7085" y1="66" x2="103.833" y2="66"/>
+<line x1="148.333" y1="66" x2="159.458" y2="66"/>
+<line x1="166.875" y1="66" x2="178" y2="66"/>
+<line x1="111.25" y1="66" x2="122.375" y2="66"/>
+<line x1="129.792" y1="66" x2="140.917" y2="66"/>
+</g>
+</svg>

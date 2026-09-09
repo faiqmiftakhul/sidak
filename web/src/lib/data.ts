@@ -4,18 +4,18 @@ export type Modul = 'rujukan' | 'severity' | 'fragmentasi' | 'readmisi'
 export const MODUL: Modul[] = ['rujukan', 'severity', 'fragmentasi', 'readmisi']
 
 export const INFO: Record<Modul, { nomor: number; nama: string; pendek: string; unit: string; kejadian: string; warna: string }> = {
-  rujukan: { nomor: 3, nama: 'Rujukan tidak sesuai', pendek: 'Rujukan', unit: 'FKTP', kejadian: 'kunjungan sakit yang dirujuk', warna: '#6A5ACD' },
-  severity: { nomor: 4, nama: 'Upcoding severity', pendek: 'Severity', unit: 'RS', kejadian: 'rawat inap severity III', warna: '#C88A0A' },
-  fragmentasi: { nomor: 9, nama: 'Fragmentasi layanan', pendek: 'Fragmentasi', unit: 'RS', kejadian: 'kunjungan ulang ≤7 hari di RS sama', warna: '#148F63' },
-  readmisi: { nomor: 16, nama: 'Readmisi 30 hari', pendek: 'Readmisi', unit: 'RS', kejadian: 'rawat inap ulang ≤30 hari', warna: '#0D366B' },
+  rujukan: { nomor: 3, nama: 'Rujukan tidak sesuai', pendek: 'Rujukan', unit: 'FKTP', kejadian: 'kunjungan sakit yang dirujuk', warna: '#7C3AED' },
+  severity: { nomor: 4, nama: 'Upcoding severity', pendek: 'Severity', unit: 'RS', kejadian: 'rawat inap severity III', warna: '#CA8A04' },
+  fragmentasi: { nomor: 9, nama: 'Fragmentasi layanan', pendek: 'Fragmentasi', unit: 'RS', kejadian: 'kunjungan ulang ≤7 hari di RS sama', warna: '#0F9D8F' },
+  readmisi: { nomor: 16, nama: 'Readmisi 30 hari', pendek: 'Readmisi', unit: 'RS', kejadian: 'rawat inap ulang ≤30 hari', warna: '#0E7490' },
 }
 
 export type Status = 'perhatian' | 'diamati' | 'wajar' | 'volume_rendah'
 export const STATUS: Record<Status, { label: string; warna: string; bg: string }> = {
-  perhatian: { label: 'Perlu perhatian', warna: '#B53333', bg: '#FBECEC' },
-  diamati: { label: 'Diamati', warna: '#C88A0A', bg: '#FDF3DF' },
-  wajar: { label: 'Dalam rentang wajar', warna: '#148F63', bg: '#E6F6EF' },
-  volume_rendah: { label: 'Volume rendah', warna: '#5F666E', bg: '#F3F3EF' },
+  perhatian: { label: 'Perlu perhatian', warna: '#C2410C', bg: '#FFF7ED' },
+  diamati: { label: 'Diamati', warna: '#A16207', bg: '#FEF9C3' },
+  wajar: { label: 'Dalam rentang wajar', warna: '#0F9D8F', bg: '#ECFDF5' },
+  volume_rendah: { label: 'Volume rendah', warna: '#64748B', bg: '#F1F5F9' },
 }
 
 export interface Kontrib { nama: string; O: number; E: number; n: number }
@@ -116,3 +116,11 @@ export function bacaStatusAudit(): Record<string, StatusAudit> {
 export function simpanStatusAudit(id: string, s: StatusAudit) {
   try { const o = bacaStatusAudit(); o[id] = s; localStorage.setItem(STATUS_AUDIT_KEY, JSON.stringify(o)) } catch { /* abaikan */ }
 }
+
+export const CATATAN_KEY = 'sidak_catatan'
+export const TEMUAN_KEY = 'sidak_temuan'
+export const AKTIVITAS_KEY = 'sidak_aktivitas'
+export const TAB_KEY = 'sidak_antrean_tab'
+
+export const ambilJSON = (k: string): Record<string, any> => { try { return JSON.parse(localStorage.getItem(k) || '{}') } catch { return {} } }
+export const simpanJSON = (k: string, o: Record<string, any>) => { try { localStorage.setItem(k, JSON.stringify(o)) } catch { /* abaikan */ } }

@@ -10,14 +10,14 @@ Dokumen: rancangan produk `docs/PRD-SIDAK-DEMO-SEMARANG.md`, slide proposal `doc
 sidak/
   pipeline/geo_prep.py   batas GADM, titik faskes OSM, demografi BPS -> web/public/data/geo/
   pipeline/build.py      Data Sampel BPJS -> indikator 4 modul (O/E) -> web/public/data/*.json
-  api/main.py            FastAPI: /api/chat (Tanya SIDAK, Anthropic SDK + alat baca-saja), /api/alat/*, statis dist/
+  api/main.py            FastAPI: /api/chat + /api/ai/digest (SumoPod AI + alat baca-saja), /api/alat/*, statis dist/
   api/buat_cadangan.py   jawaban tersimpan untuk mode luring -> web/public/data/jawaban_cadangan.json
   web/                   React + Vite + MapLibre GL + Recharts
 ```
 
 ## Menjalankan
 
-Prasyarat: Python 3.11+ (pandas, scikit-learn, pyarrow, fastapi, uvicorn, anthropic), Node 20+.
+Prasyarat: Python 3.11+ (pandas, scikit-learn, pyarrow, fastapi, uvicorn, openai), Node 20+.
 Data Sampel BPJS Kesehatan diletakkan di `../Data sampel CSV/reguler/` (tidak disertakan di repositori).
 
 ```bash
@@ -34,7 +34,7 @@ cd api && python buat_cadangan.py && cd ..
 cd web && npm install && npm run build && cd ..
 
 # 5. server (menyajikan dist/ dan /api)
-set ANTHROPIC_API_KEY=...        # opsional; tanpa ini asisten memakai jawaban tersimpan
+set SUMODOP_API_KEY=...      # opsional; tanpa ini asisten memakai jawaban tersimpan/digest deterministik
 cd api && uvicorn main:app --port 8000
 # buka http://127.0.0.1:8000
 ```
@@ -43,7 +43,16 @@ Hasil build `web/dist` dan data indikator sudah ada di repositori, jadi untuk se
 
 Pengembangan antarmuka: `cd web && npm run dev` (port 5173, proxy `/api` ke 8000).
 
-Model asisten diatur lewat `SIDAK_MODEL` (bawaan `claude-opus-5`).
+Model asisten diatur lewat `SIDAK_MODEL` (bawaan `MiniMax-M2.7-highspeed`).
+
+## Menyimak demo (30 detik)
+
+1. **"Ringkas 3 temuan utama untuk rapat audit."** — asisten Tanya AI SIDAK terbuka lewat tombol di kanan-atas, pertanyaan terisi dengan pertanyaan audit yang relevan.
+2. Kartu jawaban muncul; klik **"Tanya tentang ini"** untuk pertanyaan lanjutan.
+3. Klik **"Lihat di Antrean →"** — antrean audit terbuka dengan filter modul/status yang sama persis.
+4. Di beranda, kartu **Bacaan Tanya AI SIDAK** mengarahkan ke halaman modul/faskes/antrean terkait (di bawah tab Peta/Beranda).
+
+Tanpa `SUMODOP_API_KEY`, `GET /api/ai/digest` tetap menjawab lewat agregat deterministik (flag `deterministik: true`); dengan key, asisten memakai alat baca-saja yang sama dengan antarmuka.
 
 ## Prinsip data
 

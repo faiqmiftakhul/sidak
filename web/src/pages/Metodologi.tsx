@@ -7,7 +7,7 @@ export default function Metodologi() {
     <>
       <div className="eyebrow">Metodologi & data</div>
       <h1>Bagaimana angka-angka ini dihitung</h1>
-      <p className="sub">Ditulis untuk pembaca awam. Rincian teknis ada di kode pipeline (sidak/pipeline/build.py) dan model (model/readmisi.py, model/severity.py).</p>
+      <p className="sub">Ditulis untuk pembaca awam. Rincian teknis tersedia di dokumentasi pipeline dan model (<b>penalaran model</b>: gradient boosting untuk readmisi dan severity; tabel standar untuk fragmentasi dan rujukan).</p>
 
       <div className="card">
         <h3>Satu kerangka untuk empat modul: O/E</h3>
@@ -83,7 +83,7 @@ export default function Metodologi() {
 
       <h2>Privasi dan batasan</h2>
       <div className="card" style={{ fontSize: 13, lineHeight: 1.6 }}>
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <ul style={{ margin: 0, paddingLeft: 16 }}>
           <li>Tidak ada nomor kartu, nomor SEP, nama peserta, atau nama dokter di layar mana pun, ekspor, maupun asisten. Sampel klaim hanya memuat kolom teknis.</li>
           <li>Kode faskes dalam Data Sampel adalah kode samaran; hasil deteksi tidak dapat dan tidak dikaitkan dengan RS bernama. Titik faskes di peta berasal dari OpenStreetMap sebagai konteks pasokan.</li>
           <li>Data Sampel ±1% peserta membuat pita kepercayaan lebar untuk faskes kecil; itulah alasan skor z dan syarat stabilitas. Pada data penuh, ketidakpastian menyempit sekitar 10 kali.</li>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .dot { fill: #0E7490; }
+    .outlier { fill: #D97706; }
+    .base { stroke: #94A3B8; }
+    @media (prefers-color-scheme: dark) {
+      .dot { fill: #E2E8F0; }
+      .base { stroke: #64748B; }
+    }
+  </style>
+  <g class="base" stroke-width="2" stroke-linecap="round">
+    <path d="M5.5 19h5"/>
+    <path d="M12 19h5"/>
+    <path d="M18.5 19h5"/>
+    <path d="M25 19h5"/>
+  </g>
+  <circle class="dot" cx="8.5" cy="24" r="3.4"/>
+  <circle class="dot" cx="16" cy="24" r="3.4"/>
+  <circle class="dot" cx="23.5" cy="24" r="3.4"/>
+  <circle class="outlier" cx="23.5" cy="9" r="3.2"/>
+</svg>
