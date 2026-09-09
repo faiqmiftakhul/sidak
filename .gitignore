@@ -21,3 +21,6 @@ pipeline/_cache/
 .env.*
 .DS_Store
 Thumbs.db
+
+# Wrangler (Cloudflare Pages dev/produksi)
+.wrangler/
