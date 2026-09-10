@@ -47,25 +47,25 @@ No new frontend deps. Deploy tooling: `npx wrangler pages deploy` (opt-in, tidak
 
 ### Task 1: SPA fallback + penyesuaian build
 
-- [ ] **Step 1: `web/public/_redirects`**
+- [x] **Step 1: `web/public/_redirects`**
 
 ```
 /*  /index.html  200
 ```
 
-- [ ] **Step 2: Pastikan aset data ikut dist**
+- [x] **Step 2: Pastikan aset data ikut dist**
 
 Run: `ls /Users/salinovakbar/Downloads/sidak/web/public/data`
 Expected: `*.json` ada (faskes, kota, dll.) dan `jawaban_cadangan.json` ada (jika tidak: copy dari repo).
 
-- [ ] **Step 3: Local build + pratinjau**
+- [x] **Step 3: Local build + pratinjau**
 
 Run: `cd /Users/salinovakbar/Downloads/sidak/web && npm run build`
 Run: `npx wrangler pages dev web/dist --proxy 8000` (proksi ke FastAPI lokal agar bisa a/b test; halaman + /api dulu jalan)
 Screenshot: `/`, `/antrean`, `/faskes/RS-31595` render; dev `/api/chat` → proksi lokal berbicara (LLM real).
 Expected: halaman OK; Tanya AI merespons.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web/public/_redirects
@@ -79,7 +79,7 @@ git commit -m "chore(deploy): SPA _redirects untuk Cloudflare Pages"
 Files:
 - Create: `functions/lib/data.ts`
 
-- [ ] **Step 1: Write**
+- [x] **Step 1: Write**
 
 ```ts
 export interface S { rpht: string; rpku: string; rpht2: string; rpku2: string; oi: string | null; zi: string | null; oi2: string | null; zi2: string | null; di: string | null; di2: string | null; di3: string | null; mi: string | null; pi: string | null; s: string; r: string; k: string; np: string; rp: number; nd: number; np2: number; d1: string | number | null; d2: string | number | null; d3: string | number | null }
@@ -137,12 +137,12 @@ export async function wilayahFaskes(kota: Kota): Promise<S[]> { return muat(kota
 
 > **Sharp:** Di main.py, `ringkas_faskes` disesuaikan kota/provinsi (mis. "Purbalingga 3 bulan lebih buruk"). Saat task dieksekusi, **jalankan `sed -n '350,440p' api/main.py`** dan pindahkan blok string persis ke `ringkasFaskes`; begitu juga `wilayah_faskes` (bubble kota). Simbol/angka placeholder di atas HANYA penanda — wajib diganti isi asli.
 
-- [ ] **Step 2: Typecheck (isolate)**
+- [x] **Step 2: Typecheck (isolate)**
 
 Run: `cd /Users/salinovakbar/Downloads/sidak && npx tsc --noEmit --strict --target es2022 --module nodenext --moduleResolution nodenext functions/lib/data.ts`
 Expected: no errors (import.meta.env guard OK).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add functions/lib/data.ts
@@ -153,12 +153,12 @@ git commit -m "feat(worker): static JSON loader + constants + ringkas helpers (p
 
 ### Task 3: `functions/lib/tools.ts` — port 10 alat (1:1 dari main.py)
 
-- [ ] **Step 1: Baca sumber fungsi-fungsi alat dulu**
+- [x] **Step 1: Baca sumber fungsi-fungsi alat dulu**
 
 Run: `rg -n "def (daftar_temuan|jelaskan_temuan|ambil_indikator|bandingkan_kabkota|aliran_pasien|demografi_kecamatan|ringkas_wilayah|faskes_count|trend|metodologi)\b" /Users/salinovakbar/Downloads/sidak/api/main.py`
 Catat rentang baris tiap fungsi; baca dengan `sed -n 'X,Yp'` masing-masing sebelum menyalin.
 
-- [ ] **Step 2: Tulis `functions/lib/tools.ts`** — setiap fungsi menjadi `async (args: {…}) => Promise<string>` yang mengembalikan **string Markdown** identik dengan kembalian py. Registry:
+- [x] **Step 2: Tulis `functions/lib/tools.ts`** — setiap fungsi menjadi `async (args: {…}) => Promise<string>` yang mengembalikan **string Markdown** identik dengan kembalian py. Registry:
 
 ```ts
 import { muat, muatSemua, muatCadangan, rp, ringkasFaskes, wilayahFaskes, NAMA_MODUL, NAMA_KOTA, NOMOR_KOTA, type Kota, type Modul, type S } from './data'
@@ -183,14 +183,14 @@ export const TOOLS = Object.entries(ALAT).map(([fn, _]) => ({ fn, args: Paramete
 
 > **Sharp:** Port setiap fungsi: baca isi py lalu tulis TS setara menggunakan helper `muat/muatSemua/muatCadangan/rp/ringkasFaskes`. Markdown tabel → string template dengan `\n| |`. `jelaskan_temuan` memakai `jawaban_cadangan` fallback (port `cari_cadangan` → `muatCadangan()[nomor] ?? null`). Simpan JSON schema `tools` persis dari `main.py` (cari `tools = [ ... ]`).
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 Run: `npx tsc --noEmit --strict --target es2022 --module nodenext --moduleResolution nodenext functions/lib/tools.ts`
 Expected: clean.
 
-- [ ] **Step 4: Smoke rekor `daftar_temuan` + `trend` sebanyak semantic** (node script kecil `node -e` memanggil via `--experimental-vm-modules`? — lebih mudah: uji via rute `/api/alat/…` di Task 7).
+- [x] **Step 4: Smoke rekor `daftar_temuan` + `trend` sebanyak semantic** (node script kecil `node -e` memanggil via `--experimental-vm-modules`? — lebih mudah: uji via rute `/api/alat/…` di Task 7).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add functions/lib/tools.ts
@@ -201,12 +201,12 @@ git commit -m "feat(worker): port 10 read tools to Pages Functions"
 
 ### Task 4: `functions/lib/llm.ts` — OpenAI-compatible chat + SYSTEM
 
-- [ ] **Step 1: Baca SYSTEM prompt**
+- [x] **Step 1: Baca SYSTEM prompt**
 
 Run: `rg -n "SYSTEM|system" /Users/salinovakbar/Downloads/sidak/api/main.py | head`
 Salin konstanta `SYSTEM` (blok panjang) persis ke `SYSTEM_PROMPT` TS.
 
-- [ ] **Step 2: Tulis `functions/lib/llm.ts`**
+- [x] **Step 2: Tulis `functions/lib/llm.ts`**
 
 ```ts
 export const SYSTEM_PROMPT = `…salin persis SYSTEM dari main.py…`
@@ -231,9 +231,9 @@ export async function chatCompletion(messages: Msg[], opts: { max_tokens?: numbe
 }
 ```
 
-- [ ] **Step 3: Typecheck** (sama seperti Task 2).
+- [x] **Step 3: Typecheck** (sama seperti Task 2).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add functions/lib/llm.ts
@@ -244,11 +244,11 @@ git commit -m "feat(worker): openai-compatible chat client + system prompt port"
 
 ### Task 5: `functions/api/chat.ts` — port loop chat
 
-- [ ] **Step 1: Baca region loop**
+- [x] **Step 1: Baca region loop**
 
 Run: `sed -n '600,780p' /Users/salinovakbar/Downloads/sidak/api/main.py` (loop `while` di `chat_faskes`, urutan: initialize `session`, kirim messages, panggiil `chatCompletion(tools=…)`, tangani `tool_calls` → jalankan ALAT → push `assistant`(tool_calls) + `tool` msg, bila `continue`; tanpa tool → jawab; guard `max` iterasi). Salin logikanya 1:1.
 
-- [ ] **Step 2: Tulis `functions/api/chat.ts`**
+- [x] **Step 2: Tulis `functions/api/chat.ts`**
 
 ```ts
 import { ALAT, TOOLS, type ToolsCtx } from '../lib/tools'
@@ -297,11 +297,11 @@ export async function onRequest({ request, env }: { request: Request; env: Recor
 
 > **Sharp:** Bagian `// ←` adalah titik di mana port harus menyalin **persis** logika main.py: (a) inisialisasi `session` dari pesan (reg-exp kota/modul), (b) mutasi `session` dari `args` alat, (c) jalur `jawaban_cadangan.json` saat error alat/LLM. Baca `sed -n '600,780p'` dulu dan salin. Struktur respons `{rs, kesalahan, jawaban, cadangan}` mengikuti kontrak frontend Chat.tsx.
 
-- [ ] **Step 3: Build TS check** (task 2 command) + smoke dengan key dev:
+- [x] **Step 3: Build TS check** (task 2 command) + smoke dengan key dev:
 
 Run (bilamana key tersedia): `SIDAK_DEV_KEY=… node -e "…"` — verifikasi minimal: tanpa key → HTTP 500 `SUMOPOD_API_KEY belum disetel`; dengan `.skip`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add functions/api/chat.ts
@@ -312,11 +312,11 @@ git commit -m "feat(worker): port chat loop to Pages Function"
 
 ### Task 6: `functions/api/ai/digest.ts` — digest AI + fallback deterministik
 
-- [ ] **Step 1: Baca sumber**
+- [x] **Step 1: Baca sumber**
 
 Run: `rg -n "def digest|digest_ai|digest_deterministik" /Users/salinovakbar/Downloads/sidak/api/main.py` lalu `sed -n` bloknya. Catat kontrak respons (field), pemilihan scope (kota/modul/tahun), dan fallback bila LLM gagal.
 
-- [ ] **Step 2: Tulis `functions/api/ai/digest.ts`**
+- [x] **Step 2: Tulis `functions/api/ai/digest.ts`**
 
 ```ts
 import { muatSemua, NAMA_KOTA, type Kota } from '../../lib/data'
@@ -342,7 +342,7 @@ export async function onRequest({ request, env }: { request: Request; env: Recor
 
 > **Sharp:** Response harus sesuai parser Beranda `digest` (grep `digest` di `web/src/pages/Beranda.tsx` dan `web/src/components/…` saat mengeksekusi — sesuaikan nama field). Fallback deterministik (teks ringkas kota) harus diimplementasikan di sini bila `chatCompletion` error — salin isi `digest_deterministik` py.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add functions/api/ai/digest.ts
@@ -353,7 +353,7 @@ git commit -m "feat(worker): digest ai + deterministic fallback"
 
 ### Task 7: `functions/api/alat/[nama].ts` + `functions/api/sehat.ts` + `_headers`
 
-- [ ] **Step 1: `functions/api/alat/[nama].ts`**
+- [x] **Step 1: `functions/api/alat/[nama].ts`**
 
 ```ts
 import { ALAT } from '../../lib/tools'
@@ -367,14 +367,14 @@ export async function onRequest({ params, env }: { params: { nama: string }; env
 ```
 Adjust: dukung argumen query `?args=…` sesuai kontrak `/api/alat/{nama}` di main.py (`sed` blok route sebelum menyalin).
 
-- [ ] **Step 2: `functions/api/sehat.ts`** — balas `{ ok: true, data: <n kota dimuat>, model: env.SIDAK_MODEL ?? default, llm_key: env.SUMODOP_API_KEY ? 'ada' : 'tidak' }`.
+- [x] **Step 2: `functions/api/sehat.ts`** — balas `{ ok: true, data: <n kota dimuat>, model: env.SIDAK_MODEL ?? default, llm_key: env.SUMODOP_API_KEY ? 'ada' : 'tidak' }`.
 
-- [ ] **Step 3: `web/public/_headers`** (aset statis): `/*` `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=31536000, immutable` untuk `/assets/*` saja.
+- [x] **Step 3: `web/public/_headers`** (aset statis): `/*` `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=31536000, immutable` untuk `/assets/*` saja.
 
 Run: SST proofs — `npx wrangler pages dev web/dist` → `/api/sehat`, `/api/alat/daftar_temuan`, `/api/ai/digest?scope=semarang`.
 Expected: `sehat.ok` true; `daftar_temuan` mengembalikan markdown; digest JSON.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add functions/api/alat functions/api/sehat.ts web/public/_headers
@@ -385,7 +385,7 @@ git commit -m "feat(worker): alat route + health + headers"
 
 ### Task 8: Golden test `scripts/smoke-deploy.mjs`
 
-- [ ] **Step 1: Rekam golden dari FastAPI lokal** (butuh `pip install fastapi uvicorn` bila belum; backend jalan `uvicorn api.main:app --port 8000`):
+- [x] **Step 1: Rekam golden dari FastAPI lokal** (butuh `pip install fastapi uvicorn` bila belum; backend jalan `uvicorn api.main:app --port 8000`):
 
 ```bash
 mkdir -p /tmp/sidak-golden
@@ -394,14 +394,14 @@ curl -s "localhost:8000/api/alat/trend?modul=readmisi" -o /tmp/sidak-golden/tren
 curl -s localhost:8000/api/ai/digest -o /tmp/sidak-golden/digest.json
 ```
 
-- [ ] **Step 2: Tulis `scripts/smoke-deploy.mjs`** (node, tanpa deps) — jalan terhadap `wrangler pages dev` (atau URL Pages production `--pages <proj>`): fetch `{base}/api/sehat`, `{base}/api/alat/trend?modul=readmisi`, `{base}/api/ai/digest`, assert status 2xx & body `ok:true` / `{ hasil:… }` / `{ digest:… }`; lalu diff ringkas: `cocok = hasil.startsWith(golden.slice(0, 80))` (informasional). Exit 0 bila semua 2xx & struktur benar.
+- [x] **Step 2: Tulis `scripts/smoke-deploy.mjs`** (node, tanpa deps) — jalan terhadap `wrangler pages dev` (atau URL Pages production `--pages <proj>`): fetch `{base}/api/sehat`, `{base}/api/alat/trend?modul=readmisi`, `{base}/api/ai/digest`, assert status 2xx & body `ok:true` / `{ hasil:… }` / `{ digest:… }`; lalu diff ringkas: `cocok = hasil.startsWith(golden.slice(0, 80))` (informasional). Exit 0 bila semua 2xx & struktur benar.
 
-- [ ] **Step 3: Jalankan**
+- [x] **Step 3: Jalankan**
 
 Run: `node scripts/smoke-deploy.mjs --base http://localhost:8788`
 Expected: `PASS` × 3, exit 0.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/smoke-deploy.mjs
@@ -412,30 +412,30 @@ git commit -m "test(deploy): smoke golden vs Pages Functions"
 
 ### Task 9: Deploy + secret + verifikasi production
 
-- [ ] **Step 1: Login / project**
+- [x] **Step 1: Login / project**
 
 Run: `npx wrangler login`
 Run: `npx wrangler pages project create sidak` (skip bila sudah ada; `--production-branch main`).
 
-- [ ] **Step 2: Secret**
+- [x] **Step 2: Secret**
 
 Run: `npx wrangler pages secret put SUMOPOD_API_KEY --project-name sidak` (ketik/nempel key; tidak boleh di log/commit)
 (opsional) `… secret put SUMOPOD_BASE_URL`, `… secret put SIDAK_MODEL`.
 
-- [ ] **Step 3: Build + deploy**
+- [x] **Step 3: Build + deploy**
 
 Run: `cd /Users/salinovakbar/Downloads/sidak/web && npm run build`
 Run: `cd /Users/salinovakbar/Downloads/sidak && npx wrangler pages deploy web/dist --project-name sidak --branch main --commit-dirty=true`
 Expected: URL `https://<hash>.sidak.pages.dev`.
 
-- [ ] **Step 4: Smoke production**
+- [x] **Step 4: Smoke production**
 
 Run: `node scripts/smoke-deploy.mjs --base https://sidak.pages.dev`
 Verify di browser: `/`, `/antrean», `/faskes/RS-31595`, Tanya AI bertanya (jawaban nyata), Beranda digest AI muncul, deep-link refresh (SPA `_redirects`).
 
-- [ ] **Step 5: Set custom domain bila diminta user** (docs.cloudflare pages custom domains).
+- [x] **Step 5: Set custom domain bila diminta user** (docs.cloudflare pages custom domains).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -446,8 +446,8 @@ git commit -m "chore(deploy): cloudflare pages ready (dist + pages functions)"
 
 ### Task 10: Rollback / unused cleanup (defensif)
 
-- [ ] **Step 1:** Document (chat/PR note): file `api/main.py` dipertahankan untuk dev lokal & golden; tidak dihapus. `functions/*` hanya aktif saat di-deploy Pages.
-- [ ] **Step 2:** Verifikasi tidak ada dependensi npm baru di `web/package.json` (wrangler hanya dipakai via `npx`, bukan devDep) — `git diff web/package.json` kosong untuk commit Task 1–10.
+- [x] **Step 1:** Document (chat/PR note): file `api/main.py` dipertahankan untuk dev lokal & golden; tidak dihapus. `functions/*` hanya aktif saat di-deploy Pages.
+- [x] **Step 2:** Verifikasi tidak ada dependensi npm baru di `web/package.json` (wrangler hanya dipakai via `npx`, bukan devDep) — `git diff web/package.json` kosong untuk commit Task 1–10.
 
 ---
 
@@ -458,3 +458,16 @@ git commit -m "chore(deploy): cloudflare pages ready (dist + pages functions)"
 3. SPA deep-link refresh 200 (via `_redirects`); aset statis immutable di cache.
 4. Golden smoke `PASS` 3/3; manual visual OK; **tidak ada secret** di repo (`.gitignore` untuk `.wrangler/`, `node-..env` bila ada; cek `git status` tak ada `SUMOPOD`).
 5. Panduan operasional: secret rotation via `wrangler pages secret put`; update hanya image/icon tak perlu re-deploy handler (assets ikut build).
+
+## Catatan eksekusi (10 Sep 2026)
+
+- Project dibuat sebagai `sidak` → domain **https://sidak-3s6.pages.dev** (slug `-3s6`), `--production-branch v17-semantic-colors` (branch yang di-deploy, bukan `main`).
+- Komit deploy: `6c605b8` (_redirects/_headers/.gitignore .wrangler) + `1d3ed0c` (port functions + smoke-deploy). Branch `v17-semantic-colors` ter-push.
+- **Deviasi data:** TIDAK ada file per kota `{NOMOR}-{kota}.json`. `functions/lib/data.ts` memuat 5 file nyata: `faskes_jateng.json`, `kabkota_jateng.json`, `semarang.json`, `geo/kecamatan_demografi.json`, `jawaban_cadangan.json` (via `env.ASSETS`, karena `fetch()` same-origin 404 di Pages Functions).
+- Handler Pages Functions memakai satu argumen `onRequest(context)`; `env` di-bridge ke `globalThis._g` per handler.
+- `dv` digest = 10 karakter SHA-1 `semarang.json` (`dfa5abc60c`).
+- Secret `SUMODOP_API_KEY` sempat ter-set kosong (wrangler non-interaktif) → dihapus & di-set ulang interaktif; verifikasi via rute `envdebug` sementara (panjang value 25) lalu rute dihapus & secret dummy `SIDAK_TEST` dibersihkan.
+- Smoke produksi final: **6 PASS, 0 FAIL** (sehat `asisten=true`, trend 11 bulan, daftar_temuan 67, digest deterministik, SPA 200, chat 200 jawaban real). Golden `trend.json` identik dgn FastAPI lokal.
+- Golden diff memakai `fs.readFileSync` (bukan `fetch(file://…)`).
+- Typecheck functions: `web/node_modules/.bin/tsc -p functions/tsconfig.json` (dari root; `npx tsc` dari root salah ambil `tsc@2.0.4`).
+- Custom domain (Task 9 Step 5) tidak diminta.
