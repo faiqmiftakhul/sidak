@@ -26,6 +26,10 @@ const KACHE_MAX = 512
 
 const _tokens = (s: string): Set<string> => new Set((s || "").toLowerCase().match(/[a-z0-9]+/g) ?? [])
 
+// Kata kunci domain SIDAK — pertanyaan tanpa satu pun dari ini (dan tanpa cabang
+// heuristik yang cocok) dianggap luar cakupan saat ekstraksi slot via model gagal.
+const KATA_DOMAIN = /klaim|\boe\b|o\/e|\bz\b|skor|modul|rujukan|severity|fragmentasi|readmisi|faskes|audit|antrean|sidak|bpjs|sampel|wilayah|prioritas|tren|rupiah|selisih|potensi|estimasi|kunjungan|statistik|semarang|\brs\b|\bfktp\b|\bdata\b|\bangka\b|analisa|analisis/
+
 function slotDefault(halaman?: string): Record<string, any> {
   const s: Record<string, any> = { intent: "aggregate", metric: "rupiah", module: "all", scope: KOTA, faskes: null, period: null, topN: 5, klarifikasi: null }
   if (halaman) {
@@ -43,9 +47,12 @@ function slotDefault(halaman?: string): Record<string, any> {
 export function slotHeuristik(teks: string, halaman?: string): Record<string, any> {
   const t = (teks || "").toLowerCase()
   const s = slotDefault(halaman)
+  let cocok = false
   if (t.includes("apa itu") || t.includes("arti") || t.includes("maksud o/e") || t.includes("apa o/")) {
+    cocok = true
     s.intent = "concept"; s.metric = "oe"
   } else if (t.includes("tren") || t.includes("per bulan") || t.includes("naik/turun") || t.includes("bulanan")) {
+    cocok = true
     s.intent = "trend"; s.metric = "count"
     if (t.includes("16") || t.includes("readmisi")) s.module = "16"
     else if (t.includes("9") || t.includes("fragmentasi")) s.module = "9"
@@ -54,20 +61,29 @@ export function slotHeuristik(teks: string, halaman?: string): Record<string, an
     else s.module = "all"
   } else if (t.includes("berapa jumlah rs") || t.includes("jumlah rs") || t.includes("berapa rs") ||
     t.includes("jumlah fktp") || t.includes("berapa fktp") || t.includes("banyak rs")) {
+    cocok = true
     s.intent = "fact"; s.metric = "count"
   } else if (/\b(rs|fktp)[- ]?\d{3,}/.test(t)) {
+    cocok = true
     s.faskes = t.match(/\b(rs|fktp)[- ]?\d{3,}/)![0].toUpperCase().replace(" ", "-")
     s.intent = "fact"
   } else if (t.includes("yang mana") || t.includes("mana saja") || t.includes("terbesar") || t.includes("tertinggi") ||
     t.includes("paling") || t.includes("peringkat") || t.includes("urutan") || t.includes("daftar") ||
     t.includes("ditandai") || t.includes("perlu diperhati") || t.includes("kandidat") || t.includes("antrean") || /\bmana\b/.test(t)) {
+    cocok = true
     s.intent = "list"
     s.metric = t.includes("oe") ? "oe" : (t.includes(" z") || t.startsWith("z ") ? "z" : "rupiah")
   } else if (t.includes("selisih") || t.includes("rupiah")) {
+    cocok = true
     s.intent = "aggregate"; s.metric = "rupiah"
   }
   const mod = t.match(/\bmodul[^\d]{0,3}(3|4|9|16)\b/)
-  if (mod) s.module = mod[1]
+  if (mod) { s.module = mod[1]; cocok = true }
+  // Tidak ada cabang yang cocok DAN tidak menyebut domain sama sekali → tolak,
+  // jangan dijawab dengan ringkasan wilayah default (penyebab jawaban seragam).
+  if (!cocok && !KATA_DOMAIN.test(t)) {
+    return { ...s, intent: "refusal", alasan: "luar_cakupan" }
+  }
   return s
 }
 
@@ -227,7 +243,11 @@ async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: strin
     return out
   }
   const pesan = pesanKomposisi(teks_q, slot, hasil)
-  const msgs_baru = [...msgs]
+  // Pertahankan hanya giliran terakhir (satu jawaban assistant terakhir + pesan
+  // kini) agar model tidak meniru struktur/angka jawaban-jawaban lama.
+  let idx_ais = -1
+  for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "assistant") { idx_ais = i; break }
+  const msgs_baru = (idx_ais >= 0 ? msgs.slice(idx_ais) : [...msgs])
   msgs_baru[msgs_baru.length - 1] = { role: "user", content: pesan }
   const jawaban = await komposisi(model, msgs_baru)
   jawaban.angka ??= []; jawaban.tautan ??= []
@@ -245,13 +265,15 @@ async function cariCadangan(teks: string): Promise<Record<string, any> | null> {
   }
   const t = _tokens(teks)
   if (!t.size) return null
-  let best: Record<string, any> | null = null, skor = 0
+  let best: Record<string, any> | null = null, skor = 0, best_ukuran = 1
   for (const c of _cadangan) {
     const ut = _tokens(String(c.tanya ?? ""))
     let s = 0; for (const w of ut) if (t.has(w)) s++
-    if (s > skor) { skor = s; best = c.jawab }
+    if (s > skor) { skor = s; best = c.jawab; best_ukuran = Math.max(ut.size, 1) }
   }
-  if (skor === 0) return null
+  // Ambang: minimal 2 kata kunci DAN mencakup >= 50% kata pertanyaan cadangan —
+  // skor 1 (kata generik seperti "apa"/"itu") tidak boleh mengembalikan jawaban.
+  if (skor < 2 || skor / best_ukuran < 0.5) return null
   if (!best) return null
   return { ...best, cadangan: true }
 }
@@ -276,7 +298,7 @@ export async function onRequest(context: { request: Request; env: Record<string,
     if (body?.halaman && msgs.length) {
       msgs[msgs.length - 1] = { role: "user", content: msgs[msgs.length - 1].content + `\n\n(konteks: pengguna sedang membuka halaman ${body.halaman})` }
     }
-    const awal_teks = msgs.length ? msgs[0].content : ""
+    const awal_teks = ambilPertanyaan(msgs) || (msgs.length ? msgs[0].content : "")
     const log: string[] = []
     let alat_menyala = false
 

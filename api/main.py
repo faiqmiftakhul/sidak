@@ -418,13 +418,23 @@ def slot_default(halaman=None):
     return s
 
 
+_KATA_DOMAIN = re.compile(
+    r"klaim|\boe\b|o/e|\bz\b|skor|modul|rujukan|severity|fragmentasi|readmisi|faskes|audit|antrean|"
+    r"sidak|bpjs|sampel|wilayah|prioritas|tren|rupiah|selisih|potensi|estimasi|kunjungan|statistik|"
+    r"semarang|\brs\b|\bfktp\b|\bdata\b|\bangka\b|analisa|analisis"
+)
+
+
 def slot_heuristik(teks, halaman=None):
     """Penentu slot luring (fallback saat model ekstraksi tidak tersedia)."""
     t = (teks or "").lower()
     s = slot_default(halaman)
+    cocok = False
     if any(w in t for w in ("apa itu", "arti", "maksud o/e", "apa o/")):
+        cocok = True
         s["intent"] = "concept"; s["metric"] = "oe"
     elif any(w in t for w in ("tren", "per bulan", "naik/turun", "bulanan")):
+        cocok = True
         s["intent"] = "trend"; s["metric"] = "count"
         if "16" in t or "readmisi" in t:
             s["module"] = "16"
@@ -437,20 +447,31 @@ def slot_heuristik(teks, halaman=None):
         else:
             s["module"] = "all"
     elif any(w in t for w in ("berapa jumlah rs", "jumlah rs", "berapa rs", "jumlah fktp", "berapa fktp", "banyak rs")):
+        cocok = True
         s["intent"] = "fact"; s["metric"] = "count"
     elif re.search(r"\b(rs|fktp)[- ]?\d{3,}", t):
+        cocok = True
         s["faskes"] = re.search(r"\b(rs|fktp)[- ]?\d{3,}", t).group(0).upper().replace(" ", "-")
         s["intent"] = "fact"
     elif any(w in t for w in ("yang mana", "mana saja", "terbesar", "tertinggi", "paling", "peringkat",
                               "urutan", "daftar", "ditandai", "perlu diperhati", "kandidat", "antrean")) \
             or re.search(r"\bmana\b", t):
+        cocok = True
         s["intent"] = "list"
         s["metric"] = "oe" if "oe" in t else ("z" if " z" in t or t.startswith("z ") else "rupiah")
     elif "selisih" in t or "rupiah" in t:
+        cocok = True
         s["intent"] = "aggregate"; s["metric"] = "rupiah"
     mod = re.search(r"\bmodul[^\d]{0,3}(3|4|9|16)\b", t)
     if mod:
         s["module"] = mod.group(1)
+        cocok = True
+    # Tidak ada cabang yang cocok DAN tidak menyebut domain sama sekali -> tolak,
+    # jangan dijawab dengan ringkasan wilayah default (penyebab jawaban seragam).
+    if not cocok and not _KATA_DOMAIN.search(t):
+        s["intent"] = "refusal"
+        s["alasan"] = "luar_cakupan"
+        return s
     return s
 
 
@@ -632,7 +653,11 @@ def jalankan_pipeline(msgs, halaman, model):
         out["alat"] = [n for n, _ in hasil]
         return out
     pesan = pesan_komposisi(teks_q, slot, hasil)
-    msgs_baru = list(msgs)
+    # Pertahankan hanya giliran terakhir (satu jawaban assistant terakhir + pesan
+    # kini) agar model tidak meniru struktur/angka jawaban-jawaban lama.
+    idx_ais = next((i for i in range(len(msgs) - 1, -1, -1) if msgs[i]["role"] == "assistant"), -1)
+    msgs_baru = msgs[idx_ais:] if idx_ais >= 0 else list(msgs)
+    msgs_baru = list(msgs_baru)
     msgs_baru[-1] = {"role": "user", "content": pesan}
     jawaban = komposisi(model, msgs_baru)
     jawaban.setdefault("angka", []); jawaban.setdefault("tautan", [])
@@ -663,12 +688,15 @@ def cari_cadangan(teks):
     t = _tokens(teks)
     if not t:
         return None
-    best, skor = None, 0
+    best, skor, best_ukuran = None, 0, 1
     for c in _CADANGAN:
-        s = len(_tokens(c["tanya"]) & t)
+        ut = _tokens(c["tanya"])
+        s = len(ut & t)
         if s > skor:
-            skor, best = s, c["jawab"]
-    if skor == 0:
+            skor, best, best_ukuran = s, c["jawab"], max(len(ut), 1)
+    # Ambang: minimal 2 kata kunci DAN mencakup >= 50% kata pertanyaan cadangan —
+    # skor 1 (kata generik seperti "apa"/"itu") tidak boleh mengembalikan jawaban.
+    if skor < 2 or skor / best_ukuran < 0.5:
         return None
     return dict(best, cadangan=True)
 
@@ -820,7 +848,7 @@ def chat(req: Chat):
             for m in req.messages if m.get("content")][-12:]
     if req.halaman and msgs:
         msgs[-1] = {"role": "user", "content": msgs[-1]["content"] + f"\n\n(konteks: pengguna sedang membuka halaman {req.halaman})"}
-    awal_teks = msgs[0]["content"] if msgs else ""
+    awal_teks = ambil_pertanyaan(msgs) or (msgs[0]["content"] if msgs else "")
     log = []
     alat_menyala = False
 
