@@ -50,15 +50,17 @@ async function jawabanCadangan(q: string): Promise<Jawaban | null> {
   if (!cadangan) { try { cadangan = await (await fetch('/data/jawaban_cadangan.json')).json() } catch { cadangan = [] } }
   const tok = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 3))
   const q1 = tok(q)
-  let best: { s: number; j: Jawaban } | null = null
+  let best: { s: number; j: Jawaban; n: number } | null = null
   for (const c of cadangan!) {
     const t = tok(c.tanya)
     let s = 0
     q1.forEach(w => { if (t.has(w)) s++ })
-    s = s / Math.max(1, Math.max(q1.size, t.size))
-    if (!best || s > best.s) best = { s, j: c.jawab }
+    const rasio = s / Math.max(1, Math.max(q1.size, t.size))
+    if (!best || rasio > best.s) best = { s: rasio, j: c.jawab, n: s }
   }
-  if (best && best.s >= 0.4) return { ...best.j, cadangan: true }
+  // Samakan ambang dengan backend: minimal 2 kata kunci DAN rasio >= 0.5 —
+  // supaya pertanyaan berbeda tidak menerima jawaban cadangan yang sama.
+  if (best && best.n >= 2 && best.s >= 0.5) return { ...best.j, cadangan: true }
   return null
 }
 
