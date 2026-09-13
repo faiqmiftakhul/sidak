@@ -138,6 +138,10 @@ button { font: inherit; cursor: pointer; }
 .ai-pil-titik { position: absolute; top: 4px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #D97706; box-shadow: 0 0 0 2px var(--brand); }
 .ai-pil.aktif { background: var(--brand-tint); color: var(--brand); border-color: var(--brand); box-shadow: none; }
 .ai-pil.aktif:hover { background: var(--brand-tint); color: var(--brand-hover); }
+/* Logo penuh warna: krosnya teal, senada dengan pil teal — beri alas putih supaya tetap terbaca.
+   Pada state aktif pil berlatar pucat, alas tidak perlu; padding tetap agar ukuran tidak melompat. */
+.ai-pil .brand-mark { background: #fff; border-radius: 6px; padding: 2px; box-sizing: content-box; }
+.ai-pil.aktif .brand-mark { background: transparent; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--card); color: var(--brand); border: 1px solid var(--line); display: grid; place-items: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
 .strip { display: flex; align-items: center; gap: 10px; padding: 8px 20px; font-size: 12px; line-height: 1.5; color: var(--ink); background: var(--brand-tint); border-bottom: 1px solid var(--line); }
 .strip svg { color: var(--brand); flex-shrink: 0; }
