@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   mdiArrowDown, mdiArrowLeft, mdiChevronRight, mdiClose, mdiContentCopy, mdiDeleteOutline, mdiFullscreen, mdiFullscreenExit,
@@ -119,6 +119,53 @@ function TeksBerlink({ teks, faskes, nav }: { teks: string; faskes: Faskes[]; na
     if (!k) return <span key={i}>{p}</span>
     const f = cariFaskes(faskes, k)
     return <span key={i}>{p}{f ? <a className="kode-faskes" href={'/faskes/' + f.id} onClick={e => { e.preventDefault(); nav(f.id) }}>{k}</a> : <span className="mono">{k}</span>}</span>
+  })}</>
+}
+
+/* Baris tabel markdown: "| a | b | c |" — pemisah gaya |---|---| dilewati. */
+const adlBarisTabel = (s: string) => /^\s*\|.+\|\s*$/.test(s)
+const pemisahTabel = (s: string) => /^\s*\|[\s:|-]+\|\s*$/.test(s)
+const selTabel = (s: string) => s.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim())
+
+/* Teks jawaban AI yang berformat ringan (tabel markdown, **tebal**, `kode`,
+   baris baru) dirender jadi elemen yang enak dibaca, bukan mentahan karakter. */
+function TeksJawab({ teks, faskes, nav }: { teks: string; faskes: Faskes[]; nav: (id: string) => void }) {
+  const baris = teks.split('\n')
+  const blok: Array<{ ket: 'tabel' | 'teks'; isi: string[] }> = []
+  for (const b of baris) {
+    const akhir = blok[blok.length - 1]
+    if (adlBarisTabel(b)) {
+      if (akhir?.ket === 'tabel') akhir.isi.push(b)
+      else blok.push({ ket: 'tabel', isi: [b] })
+    } else {
+      if (akhir?.ket === 'teks') akhir.isi.push(b)
+      else blok.push({ ket: 'teks', isi: [b] })
+    }
+  }
+  const segmen = (teks: string, kunci: string): ReactNode[] => {
+    const bagian = teks.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(s => s !== '')
+    return bagian.map((s, i) => {
+      if (s.startsWith('**') && s.endsWith('**')) return <strong key={kunci + i}>{s.slice(2, -2)}</strong>
+      if (s.startsWith('`') && s.endsWith('`')) return <code key={kunci + i} className="mono">{s.slice(1, -1)}</code>
+      return <TeksBerlink key={kunci + i} teks={s} faskes={faskes} nav={nav} />
+    })
+  }
+  return <>{blok.map((b, bi) => {
+    if (b.ket === 'tabel') {
+      const baris2 = b.isi.filter(b2 => !pemisahTabel(b2))
+      if (baris2.length === 0) return null
+      const kepala = selTabel(baris2[0])
+      const badan = baris2.slice(1).map(selTabel)
+      return (
+        <table key={bi} className="t ai-tabel">
+          <thead><tr>{kepala.map((h, hi) => <th key={hi}>{segmen(h, `h${bi}-${hi}`)}</th>)}</tr></thead>
+          <tbody>{badan.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci}>{segmen(c, `c${bi}-${ri}-${ci}`)}</td>)}</tr>)}</tbody>
+        </table>
+      )
+    }
+    const gabung = b.isi.join('\n')
+    if (!gabung.trim()) return null
+    return <p key={bi} className="ai-paragraf">{segmen(gabung, `p${bi}`)}</p>
   })}</>
 }
 
@@ -413,8 +460,8 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
         <span className="logo-an"><SidakMark size={20} /></span>
         <div className="ais-b">
           {mode === 'hidup' && <button type="button" className="ai-sal" aria-label="Salin jawaban" onClick={() => salin(p.content)}><Icon path={mdiContentCopy} size={13} /></button>}
-          <p className="ai-jawab"><TeksBerlink teks={k} faskes={faskes} nav={nav} />{p.henti && <span className="hint"> — dihentikan</span>}</p>
-          {s && <p className="ai-sisa"><TeksBerlink teks={s} faskes={faskes} nav={nav} /></p>}
+          <div className="ai-jawab"><TeksJawab teks={k} faskes={faskes} nav={nav} />{p.henti && <span className="hint"> — dihentikan</span>}</div>
+          {s && <div className="ai-sisa"><TeksJawab teks={s} faskes={faskes} nav={nav} /></div>}
           {p.jawaban && <Bukti j={p.jawaban} faskes={faskes} nav={nav} />}
           <div className="asum">
             {p.jawaban?.cadangan && <span className="luring">Jawaban tersimpan · mode luring</span>}
@@ -516,7 +563,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
               <div className="ais">
                 <span className="logo-an"><SidakMark size={20} /></span>
                 <div className="ais-b">
-                  <p className="ai-jawab"><TeksBerlink teks={st.t} faskes={faskes} nav={nav} /><span className="caret" /></p>
+                  <div className="ai-jawab"><TeksJawab teks={st.t} faskes={faskes} nav={nav} /><span className="caret" /></div>
                 </div>
               </div>
             )}

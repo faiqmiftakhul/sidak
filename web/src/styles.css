@@ -577,7 +577,14 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .ai-sal:hover { background: var(--hover); color: var(--ink); }
 .ai-jawab { font-weight: 650; font-size: 14px; line-height: 1.45; margin: 0 0 4px; color: var(--ink); }
 .ai-jawab .hint { font-weight: 400; }
-.ai-sisa { font-size: 13px; line-height: 1.55; margin: 0 0 8px; white-space: pre-wrap; color: var(--ink); }
+.ai-sisa { font-size: 13px; line-height: 1.55; margin: 0 0 8px; color: var(--ink); }
+/* jawaban AI terformat: paragraf terpisah + tabel markdown jadi tabel sungguhan */
+.ai-jawab .ai-paragraf, .ai-sisa .ai-paragraf { margin: 0 0 8px; font-weight: inherit; }
+.ai-jawab .ai-paragraf:last-child, .ai-sisa .ai-paragraf:last-child { margin-bottom: 0; }
+.ai-tabel { margin: 6px 0 10px; font-weight: 400; font-size: 12.5px; width: 100%; }
+.ai-tabel th { font-size: 11px; text-transform: uppercase; letter-spacing: .02em; color: var(--grey); }
+.ai-tabel td { font-variant-numeric: tabular-nums; }
+.ai-tabel code { font-size: 11.5px; background: transparent; padding: 0; }
 .ai-jam { display: block; text-align: right; margin-top: 4px; font-size: 10.5px; color: var(--grey-3); }
 .ais-b:hover .ai-jam { opacity: 1; }
 .ai-jam { opacity: 0; transition: opacity var(--t-fast) var(--ease); }
