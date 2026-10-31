@@ -21,11 +21,13 @@ function Spark({ v, warna }: { v: number[]; warna: string }) {
 
 const PIL_STATUS: Record<OES, Status> = { wajar: 'wajar', diamati: 'diamati', perhatian: 'perhatian' }
 
-export default function KpiCard({ role, icon, label, value, delta, sparkline, href, statusPill, hint, variant, style }: {
+export default function KpiCard({ role, icon, label, value, oe, delta, sparkline, href, statusPill, hint, variant, style }: {
   role: Role
   icon?: string
   label: string
   value: ReactNode
+  /** Nilai O/E yang ditampilkan; penentu warna & pil untuk role 'ratio'. */
+  oe?: number | null
   delta?: KpiDelta
   sparkline?: number[]
   href?: string
@@ -35,7 +37,7 @@ export default function KpiCard({ role, icon, label, value, delta, sparkline, hr
   style?: CSSProperties
 }) {
   const sm = variant === 'sm'
-  const oev = sparkline && sparkline.length ? sparkline[sparkline.length - 1] : null
+  const oev = oe !== undefined ? oe : sparkline && sparkline.length ? sparkline[sparkline.length - 1] : null
   const tok = ROLE_TOK(role, oev)
   const oes = role === 'ratio' ? OE_STATUS(oev) : null
   const pil = statusPill && oes ? STATUS[PIL_STATUS[oes]] : null

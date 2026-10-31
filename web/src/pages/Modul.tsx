@@ -84,7 +84,7 @@ export default function ModulPage() {
       <div className="grid4">
         <KpiCard role="coverage" label={`${info.unit} dinilai di Semarang`} value={p.n_cukup} href={'/antrean?mod=' + m} hint={<>dari {p.n_faskes}; minimum {ring.min_n[m]} {m === 'rujukan' ? 'kunjungan sakit' : m === 'fragmentasi' ? 'kunjungan RJTL' : 'rawat inap'}</>} />
         <KpiCard role="attention" label="Perlu perhatian" value={p.n_perhatian} href={'/antrean?st=perhatian&mod=' + m} hint={<>{p.n_diamati} diamati{m === 'fragmentasi' && p.n_diputihkan != null ? ` · ${p.n_diputihkan} wajar setelah daftar putih` : ''}</>} />
-        <KpiCard role="ratio" label="O/E kota" value={oe(p.E > 0 ? p.O / p.E : null)} statusPill sparkline={(ring.tren[m] ?? []).map(b => b.E > 0 ? b.O / b.E : null).filter((x): x is number => x != null)} hint={<>{num(p.O)} kejadian vs {num(p.E, 1)} wajar</>} />
+        <KpiCard role="ratio" label="O/E kota" value={oe(p.E > 0 ? p.O / p.E : null)} oe={p.E > 0 ? p.O / p.E : null} statusPill sparkline={(ring.tren[m] ?? []).map(b => b.E > 0 ? b.O / b.E : null).filter((x): x is number => x != null)} hint={<>{num(p.O)} kejadian vs {num(p.E, 1)} wajar</>} />
         <KpiCard role="money" label="Selisih rupiah" value={rp(p.rupiah)} href={'/antrean?mod=' + m} hint={<>sampel · ≈ {rp(p.rupiah_tertimbang)} tertimbang</>} />
       </div>
 
@@ -128,7 +128,7 @@ export default function ModulPage() {
         <div className="card" style={{ marginTop: 12 }}>
           <h3>Ambang & interpretasi</h3>
           <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--grey)' }}>
-            Status didasarkan pada O/E dan skor z berpasan: dalam rentang wajar bila O/E ≤ 1,05 <b>atau</b> z ≤ 1,96; cukup sering dipakai ambang ganda dengan kestabilan dua paruh periode. Angka dipakai untuk <b>memprioritaskan audit</b> — setiap indikasi diverifikasi auditor pada klaim sampel.
+            Status didasarkan pada O/E dan skor z secara berpasangan: dalam rentang wajar bila O/E ≤ 1,05 <b>atau</b> z ≤ 1,96; status perhatian juga mensyaratkan pola yang stabil di dua paruh periode. Angka dipakai untuk <b>memprioritaskan audit</b> — setiap indikasi diverifikasi auditor pada klaim sampel.
           </div>
           <PenjelasanLengkap info={info} />
         </div>

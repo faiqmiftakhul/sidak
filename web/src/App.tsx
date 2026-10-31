@@ -83,7 +83,7 @@ export default function App() {
       <div className={'app' + (chat ? ' chat-open' : '') + (kolaps ? ' collapsed' : '') + (besar ? ' chat-besar' : '')}>
         <nav className="side" aria-label="Navigasi utama">
           <div className="brand" data-tip={BRAND_JUDUL}><img className="brand-mark" src="/favicon-48x48.png?v=3" alt="Logo SIDAK" width="24" height="24" /><span className="brand-text">SIDAK</span></div>
-          <div className="tag">Sistem Indikasi Audit Klaim<br />fokus Kota Semarang · data sampel 2024–2025</div>
+          <div className="tag">Deteksi Dini Pola Klaim Tidak Wajar<br />fokus Kota Semarang · data sampel 2024–2025</div>
 
           <NavLink to="/" end data-tip={NAV.home.label} data-tip-desc={NAV.home.desc} aria-describedby="sidak-tip">
             <Icon path={NAV.home.icon} size={18} /><span className="nav-label">{NAV.home.label}</span>

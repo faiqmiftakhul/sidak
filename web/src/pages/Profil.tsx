@@ -127,7 +127,7 @@ export default function Profil() {
               <span className="percentil">{gKel.n > 0 ? <>Posisi <b>persentil ke-{gKel.P}</b> dari {gKel.n} {f.tipe === 'FKTP' ? 'FKTP' : 'RS'} sekelas dengan volume cukup</> : 'Belum ada pembanding sekelas yang cukup'}</span>
             </div>
             <div className="metrik" style={{ marginTop: 12 }}>
-              <KpiCard role="ratio" label="O/E" value={oe(h!.OE)} variant="sm" />
+              <KpiCard role="ratio" label="O/E" value={oe(h!.OE)} oe={h!.OE} variant="sm" />
               <KpiCard role="neutral" label="Skor z" value={h!.z == null ? '–' : num(h!.z, 2)} variant="sm" />
               <KpiCard role="coverage" label={`Volume ${INFO[m].kejadian.toLowerCase()}`} value={num(h!.n)} variant="sm" />
               <KpiCard role="money" label="≈ Selisih tertimbang" value={rp(h!.rupiah_tertimbang)} variant="sm" />
@@ -137,7 +137,7 @@ export default function Profil() {
             </div>
             {gKel.n > 0 && <div style={{ marginTop: 8 }}><DotPlot nilai={gKel.vs.slice(0, 40)} f={h!.OE ?? 0} kelas={f.kelas_pendek} /></div>}
             <div className="hint" style={{ marginTop: 8 }}>
-              Sebaran O/E rekan sebaya sekelas (abu) vs faskes ini (ambar). Garis putus-putus = wajar (1,0); garis pendek &mdash; = median rekan sebaya. Kimia pendek di atas rel = selang keyakinan 95% untuk O/E.
+              Sebaran O/E rekan sebaya sekelas (abu) vs faskes ini (ambar). Garis putus-putus = wajar (1,0); garis pendek &mdash; = median rekan sebaya. Garis tebal di atas sumbu = selang keyakinan 95% untuk O/E.
             </div>
           </div>
 

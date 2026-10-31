@@ -78,7 +78,7 @@ export default function Beranda() {
       <div className="grid4">
         <KpiCard role="attention" label="Faskes perlu perhatian" value={num(ring.n_perhatian)} href="/antrean?st=perhatian" hint={<>dari {ring.n_faskes_fkrtl + ring.n_faskes_fktp} faskes · {ring.n_diamati} lainnya diamati · buka antrean →</>} />
         <KpiCard role="money" label="Selisih rupiah (sampel)" value={rp(ring.rupiah)} hint={<>≈ <b>{rp(ring.rupiah_tertimbang)}</b> setelah dibobot ke populasi peserta</>} />
-        <KpiCard role="ratio" label={`O/E ${INFO[m].pendek}, 3 bulan terakhir`} value={oe(oeTerakhir)} statusPill href={'/modul/' + m} sparkline={bulanTerakhir.map(b => b.E > 0 ? b.O / b.E : null).filter((x): x is number => x != null)} hint="kejadian nyata ÷ kejadian wajar, seluruh kota" />
+        <KpiCard role="ratio" label={`O/E ${INFO[m].pendek}, 3 bulan terakhir`} value={oe(oeTerakhir)} oe={oeTerakhir} statusPill href={'/modul/' + m} sparkline={bulanTerakhir.map(b => b.E > 0 ? b.O / b.E : null).filter((x): x is number => x != null)} hint="kejadian nyata ÷ kejadian wajar, seluruh kota" />
         <KpiCard role="coverage" label="Cakupan data" value={`${num(ring.per_modul.readmisi.n)} RITL`} hint={`${num(ring.per_modul.fragmentasi.n)} kunjungan RJTL · ${num(ring.per_modul.rujukan.n)} kunjungan FKTP`} />
       </div>
 

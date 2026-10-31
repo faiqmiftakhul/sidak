@@ -24,7 +24,7 @@ const daftarTemuan = async (a: Arg): Promise<Hasil> => {
   const modul = (a.modul as string | undefined) ?? undefined
   const status = (a.status as string | undefined) ?? "aktif"
   const urut = (a.urut as string | undefined) ?? "rupiah_tertimbang"
-  const jumlah = int(a.jumlah, 5)
+  const jumlah = Math.max(1, Math.min(100, int(a.jumlah, 5)))
   const sedikit = !!a.sedikit
   const { fs, wil } = await wilayahFaskes(wilayah)
   const rows: Array<[Faskes, string, any]> = []
@@ -143,7 +143,7 @@ const bandingkanKabkota = async (a: Arg): Promise<Hasil> => {
   if (!(modul in NOMOR)) return { error: "modul tidak dikenal" }
   const S = await store()
   const urut = (a.urut as string | undefined) ?? "OE"
-  const jumlah = int(a.jumlah, 10)
+  const jumlah = Math.max(1, Math.min(100, int(a.jumlah, 10)))
   const rows = Object.entries(S.kab).filter(([, v]) => v[modul] && v[modul]!.OE != null && (v[modul]!.n_faskes ?? 0) > 0)
   rows.sort((x, y) => ((y[1][modul] as unknown as Record<string, number>)[urut] ?? 0) - ((x[1][modul] as unknown as Record<string, number>)[urut] ?? 0))
   return {
@@ -156,7 +156,7 @@ const bandingkanKabkota = async (a: Arg): Promise<Hasil> => {
 const aliranPasien = async (a: Arg): Promise<Hasil> => {
   const S = await store()
   const a2 = S.ring.aliran
-  const jumlah = int(a.jumlah, 10)
+  const jumlah = Math.max(1, Math.min(100, int(a.jumlah, 10)))
   if (a.modul === "rujukan") {
     return {
       keterangan: "kunjungan rawat jalan di RS Semarang berperujuk FKTP, menurut kab/kota FKTP terdaftar peserta",

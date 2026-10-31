@@ -172,11 +172,15 @@ function TeksJawab({ teks, faskes, nav }: { teks: string; faskes: Faskes[]; nav:
 function Bukti({ j, faskes, nav }: { j: Jawaban; faskes: Faskes[]; nav: (id: string) => void }) {
   const a = j.angka ?? []
   if (a.length === 0) return null
-  const baris = a.map(x => ({ x, f: cariFaskes(faskes, x.label) }))
-  if (baris.some(r => r.f)) {
+  const semua = a.map(x => ({ x, f: cariFaskes(faskes, x.label) }))
+  if (semua.some(r => r.f)) {
+    // Angka ringkasan (mis. "temuan aktif") bukan baris faskes — tampilkan terpisah di atas tabel.
+    const baris = semua.filter(r => r.f)
+    const lain = semua.filter(r => !r.f).map(r => r.x)
     const kecil = baris.filter(r => { const m = r.f && modulTerbesar(r.f); return m && r.f!.modul[m]!.n < 30 })
     return (
       <div className="akpj">
+        {lain.length > 0 && <div className="abuk">{lain.map(x => <div key={x.label} className="ab"><b>{x.nilai}{x.satuan ? ' ' + x.satuan : ''}</b><span>{x.label}</span></div>)}</div>}
         <table className="t">
           <thead><tr><th>Faskes</th><th>Kelas</th><th>O/E (z)</th><th>≈ Selisih tbg</th><th>Status</th><th>Tren</th></tr></thead>
           <tbody>{baris.map(({ x, f }) => {

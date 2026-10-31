@@ -53,7 +53,7 @@ export default function Antrean() {
       out.push({ key: f.id + '|' + m, f, m, status: h.status, OE: h.OE, z: h.z, n: h.n, rupiah_t: h.rupiah_tertimbang })
     }))
     const ord = urutCol === 'OE' ? ((r: Baris) => r.OE) : urutCol === 'z' ? ((r: Baris) => r.z) : urutCol === 'n' ? ((r: Baris) => r.n) : ((r: Baris) => r.rupiah_t)
-    const arah = urutNaik ? 1 : -1
+    const arah = urutNaik ? -1 : 1
     return out.sort((a, b) => arah * (((ord(b) ?? -1) as number) - ((ord(a) ?? -1) as number)))
   }, [dasar, modArr, stArr, kelas, urut, q])
 
@@ -112,11 +112,12 @@ export default function Antrean() {
 
   const [tabs, setTabs] = useState<Simpan[]>(() => { try { return JSON.parse(localStorage.getItem(TAB_KEY) || '[]') } catch { return [] } })
   const tutupTabs = (l: Simpan[]) => { setTabs(l); try { localStorage.setItem(TAB_KEY, JSON.stringify(l)) } catch { /* abaikan */ } }
+  const [namaBaru, setNamaBaru] = useState<string | null>(null)
   const simpanTampilan = () => {
-    const label = window.prompt('Nama tampilan (opsional):', '')
-    if (label === null) return
-    const snap: Simpan = { label: label || 'Tampilan ' + (tabs.length + 1), wil, mods: modArr.join('|'), sts: stArr.join('|'), urut, kelas, q }
+    if (namaBaru === null) return
+    const snap: Simpan = { label: namaBaru.trim() || 'Tampilan ' + (tabs.length + 1), wil, mods: modArr.join('|'), sts: stArr.join('|'), urut, kelas, q }
     tutupTabs([...tabs, snap])
+    setNamaBaru(null)
   }
   const terapkan = (t: Simpan) => {
     const n = new URLSearchParams()
@@ -142,8 +143,8 @@ export default function Antrean() {
       <aside className="rail" aria-label="Filter antrean">
         <div className="gruppen">
           <h4>Wilayah</h4>
-          <button type="button" className={'rail-di' + (wil === 'semarang' ? ' on' : '')} onClick={() => patch('wil', 'semarang')}><span className="odot" style={{ background: 'var(--brand)' }} />Kota Semarang<span className="cnt">{dasar.filter(f => f.kab === KOTA).length}</span></button>
-          <button type="button" className={'rail-di' + (wil === 'jateng' ? ' on' : '')} onClick={() => patch('wil', 'jateng')}><span className="odot" style={{ background: 'var(--grey-2)' }} />Seluruh Jawa Tengah<span className="cnt">{dasar.length}</span></button>
+          <button type="button" className={'rail-di' + (wil === 'semarang' ? ' on' : '')} onClick={() => patch('wil', 'semarang')}><span className="odot" style={{ background: 'var(--brand)' }} />Kota Semarang<span className="cnt">{faskes.filter(f => f.kab === KOTA).length}</span></button>
+          <button type="button" className={'rail-di' + (wil === 'jateng' ? ' on' : '')} onClick={() => patch('wil', 'jateng')}><span className="odot" style={{ background: 'var(--grey-2)' }} />Seluruh Jawa Tengah<span className="cnt">{faskes.length}</span></button>
         </div>
         <div className="gruppen">
           <h4>Status</h4>
@@ -161,7 +162,14 @@ export default function Antrean() {
 
       <section style={{ minWidth: 0 }}>
         <div className="tabs" role="tablist" aria-label="Tampilan tersimpan">
-          <button type="button" className="btn sm" onClick={simpanTampilan} title="Simpan filter saat ini"><Icon path={mdiPlaylistPlus} size={15} /> Simpan tampilan</button>
+          {namaBaru === null
+            ? <button type="button" className="btn sm" onClick={() => setNamaBaru('')} title="Simpan filter saat ini"><Icon path={mdiPlaylistPlus} size={15} /> Simpan tampilan</button>
+            : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <input autoFocus aria-label="Nama tampilan" placeholder="Nama tampilan (opsional)" value={namaBaru} onChange={e => setNamaBaru(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') simpanTampilan(); if (e.key === 'Escape') setNamaBaru(null) }} style={{ height: 28, padding: '0 8px', border: '1px solid var(--line)', borderRadius: 6, font: 'inherit', fontSize: 13 }} />
+                <button type="button" className="btn sm primary" onClick={simpanTampilan}>Simpan</button>
+                <button type="button" className="btn sm" onClick={() => setNamaBaru(null)}>Batal</button>
+              </span>}
           {tabs.map((t, i) => {
             const kini = [wil, modArr.join('|'), stArr.join('|'), urut, kelas, q].join('§')
             const itu = [t.wil, t.mods, t.sts, t.urut, t.kelas, t.q].join('§')
