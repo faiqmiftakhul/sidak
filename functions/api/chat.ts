@@ -15,7 +15,11 @@ const TEMPLATE: Record<string, string> = {
   D: "Pertanyaan itu di luar cakupan SIDAK. Saya bisa membantu soal data klaim, modul, atau antrean audit.",
   E: "Data itu tidak tersedia dalam sampel saat ini.",
   F: "Agar jawaban tepat, saya perlu satu klarifikasi: %s",
+  G: "SIDAK tidak menilai individu (dokter, tenaga kesehatan, atau pasien) — analisis hanya sampai tingkat faskes, sebagai indikasi untuk audit.",
 }
+// Penjaga deterministik sebelum klasifikasi model: penilaian individu dan permintaan vonis selalu ditolak.
+const RE_INDIVIDU = /\b(dokter|dr\.|dpjp|perawat|bidan|nakes|tenaga (medis|kesehatan)|nama pasien|nik)\b/i
+const RE_VONIS = /\b(apakah|benarkah|pasti|terbukti)\b.*\b(fraud|curang|kecurangan|korupsi|menipu|nakal)\b/i
 const REFUSAL_SLOT: Record<string, string> = { luar_cakupan: "D", rahasia: "A", injection: "A", pasien: "B", vonis: "C" }
 const SLUG: Record<string, string> = {}
 for (const [k, v] of Object.entries(NOMOR)) SLUG[String(v)] = k
@@ -218,6 +222,8 @@ function ambilPertanyaan(msgs: Array<Record<string, any>>): string {
 async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: string | undefined, model: Client, t: number): Promise<Record<string, any> | null> {
   const teks_q = ambilPertanyaan(msgs)
   if (!teks_q) return null
+  if (RE_INDIVIDU.test(teks_q)) return { teks: TEMPLATE.G, angka: [], tautan: [], alat: [] }
+  if (RE_VONIS.test(teks_q)) return { teks: TEMPLATE.C, angka: [], tautan: [], alat: [] }
   const slot = await ekstrakSlot(teks_q, halaman || "/", model)
   const intent = slot.intent
   if (intent === "refusal") {
@@ -244,11 +250,12 @@ async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: strin
   }
   const pesan = pesanKomposisi(teks_q, slot, hasil)
   // Pertahankan hanya giliran terakhir (satu jawaban assistant terakhir + pesan
-  // kini) agar model tidak meniru struktur/angka jawaban-jawaban lama.
+  // kini) agar model tidak meniru struktur/angka jawaban-jawaban lama. Pertanyaan
+  // user yang belum terjawab di antaranya dibuang: kalau ikut, model menjawab
+  // pertanyaan lama dan jawabannya tersimpan di kache dengan kunci pertanyaan baru.
   let idx_ais = -1
   for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "assistant") { idx_ais = i; break }
-  const msgs_baru = (idx_ais >= 0 ? msgs.slice(idx_ais) : [...msgs])
-  msgs_baru[msgs_baru.length - 1] = { role: "user", content: pesan }
+  const msgs_baru = [...(idx_ais >= 0 ? [msgs[idx_ais]] : []), { role: "user", content: pesan }]
   const jawaban = await komposisi(model, msgs_baru)
   jawaban.angka ??= []; jawaban.tautan ??= []
   jawaban.alat = hasil.map(([n]) => n)
