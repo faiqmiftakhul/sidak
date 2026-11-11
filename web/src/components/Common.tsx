@@ -75,16 +75,16 @@ export function Tren({ rows, tinggi = 220, judul }: { rows: Bulan[]; tinggi?: nu
   )
 }
 
-export function Peringkat({ rows, m, nilai = 'OE', tinggi = 320, refX }: { rows: Faskes[]; m: Modul; nilai?: 'OE' | 'rate' | 'rupiah' | 'z_od'; tinggi?: number; refX?: number }) {
-  const d = rows.map(f => { const h = f.modul[m]!; return { nama: f.label, v: nilai === 'OE' ? h.OE ?? 0 : nilai === 'rate' ? h.rate : nilai === 'z_od' ? h.z_od ?? h.z ?? 0 : h.rupiah, status: h.status, id: f.id } })
+export function Peringkat({ rows, m, nilai = 'OE', tinggi = 320, refX }: { rows: Faskes[]; m: Modul; nilai?: 'OE' | 'rate' | 'rupiah'; tinggi?: number; refX?: number }) {
+  const d = rows.map(f => ({ nama: f.label, v: nilai === 'OE' ? f.modul[m]!.OE ?? 0 : nilai === 'rate' ? f.modul[m]!.rate : f.modul[m]!.rupiah, status: f.modul[m]!.status, id: f.id }))
   return (
     <ResponsiveContainer width="100%" height={tinggi}>
       <BarChart data={d} layout="vertical" margin={{ top: 4, right: 30, left: 20, bottom: 0 }}>
         <CartesianGrid stroke="#ECEEF0" horizontal={false} />
-        {refX != null && (nilai === 'OE' || nilai === 'z_od') && <ReferenceLine x={refX} stroke="var(--grey-2)" strokeDasharray="4 3" label={{ value: num(refX, refX % 1 ? 2 : 1), position: 'insideBottomRight', fontSize: 10, fill: 'var(--grey-2)' }} />}
-        <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v: any) => (nilai === 'rupiah' ? rp(v, 0) : nilai === 'rate' ? v + '%' : nilai === 'z_od' ? num(v, 1) : oe(v))} />
+        {refX != null && nilai === 'OE' && <ReferenceLine x={refX} stroke="var(--grey-2)" strokeDasharray="4 3" label={{ value: '1,0', position: 'insideBottomRight', fontSize: 10, fill: 'var(--grey-2)' }} />}
+        <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v: any) => (nilai === 'rupiah' ? rp(v, 0) : nilai === 'rate' ? v + '%' : oe(v))} />
         <YAxis type="category" dataKey="nama" width={90} tick={{ fontSize: 11 }} />
-        <Tooltip formatter={(v: any) => (nilai === 'rupiah' ? rp(Number(v)) : nilai === 'rate' ? pct(Number(v)) : nilai === 'z_od' ? num(Number(v), 2) : oe(Number(v)))} />
+        <Tooltip formatter={(v: any) => (nilai === 'rupiah' ? rp(Number(v)) : nilai === 'rate' ? pct(Number(v)) : oe(Number(v)))} />
         <Bar dataKey="v" isAnimationActive={false} shape={(p: any) => <rect x={p.x} y={p.y} width={p.width} height={p.height} fill={STATUS[p.payload.status as Status].warna} rx={3} />} />
       </BarChart>
     </ResponsiveContainer>

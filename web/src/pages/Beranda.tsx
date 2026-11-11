@@ -14,7 +14,7 @@ interface Minat { id: string; teks: string; link: string; isi: string | null }
 const tglRingkas = () => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })
 
 export default function Beranda() {
-  const { ring, faskes } = useData()
+  const { ring, faskes, kab } = useData()
   const nav = useNavigate()
   const [m, setM] = useState<Modul>('readmisi')
   const sem = faskes.filter(f => f.kab === KOTA)
@@ -84,12 +84,14 @@ export default function Beranda() {
 
       <h2>Per modul</h2>
       <div className="grid4">
-        {MODUL.map(k => { const p = ring.per_modul[k]; const oev = p.E > 0 ? p.O / p.E : null; const oes = OE_STATUS(oev); const fillW = oev == null ? 0 : Math.min(100, (oev / 1.6) * 100); return (
+        {MODUL.map(k => { const p = ring.per_modul[k]; const oev = p.E > 0 ? p.O / p.E : null; const oes = OE_STATUS(oev); const fillW = oev == null ? 0 : Math.min(100, (oev / 1.6) * 100); const zk = kab[KOTA]?.[k]?.z ?? null; return (
           <Link key={k} to={'/modul/' + k} className="modkart">
             <div className="modkart-head"><span className="mono modkart-no">#{INFO[k].nomor}</span><h3 style={{ margin: 0 }}>{INFO[k].nama}</h3></div>
             <div className="kv">
               <span className="k">Dinilai</span><span>{p.n_cukup} dari {p.n_faskes} {INFO[k].unit}</span>
               <span className="k">Perlu perhatian</span><span className="modkart-pill">{p.n_perhatian}</span>
+              <span className="k" title="Skor z gabungan kota: (O − E) ÷ √V dari seluruh faskes di kota. Di atas 1,96 berarti kelebihan kejadian di tingkat kota kecil kemungkinan hanya kebetulan.">Skor z kota</span>
+              <span className={zk != null && zk > 1.96 ? 'zsig' : undefined}>{zk == null ? '–' : num(zk, 2)}</span>
             </div>
             <div className="oe-mini">
               <div className="oe-track"><div className="oe-fill" style={{ width: fillW + '%', background: RATIO[oes].text }} /><span className="oe-tick" title="Tanda 1,0 = wajar" /></div>
@@ -120,7 +122,7 @@ export default function Beranda() {
             {antrean.map(f => <tr key={f.id} tabIndex={0} role="link" aria-label={`Buka profil ${f.label}`} onClick={e => buka(e, f.id)} onKeyDown={onEnter(() => nav('/faskes/' + f.id))}>
               <td><b>{f.label}</b><div className="hint">{f.milik}</div></td>
               <td>{f.kelas_pendek}</td>
-              <td>{MODUL.filter(k => aktif(f.modul[k])).map(k => <span key={k} style={{ marginRight: 8 }}><StatusPill s={f.modul[k]!.status} /> <span className="hint">#{INFO[k].nomor} O/E {oe(f.modul[k]!.OE)}</span></span>)}</td>
+              <td>{MODUL.filter(k => aktif(f.modul[k])).map(k => <span key={k} style={{ marginRight: 8 }}><StatusPill s={f.modul[k]!.status} /> <span className="hint">#{INFO[k].nomor} O/E {oe(f.modul[k]!.OE)} · z {f.modul[k]!.z == null ? '–' : num(f.modul[k]!.z, 1)}</span></span>)}</td>
               <td className="num"><RupiahText v={f.rupiah} /></td>
               <td className="num"><RupiahText v={f.rupiah_tertimbang} /></td>
             </tr>)}

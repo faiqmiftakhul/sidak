@@ -247,24 +247,6 @@ Dua modul ini memakai tabel rasio nasional. Metode ini sah dan mudah dijelaskan,
 ### 7.8 Asumsi independensi pada z-score
 `V = Σ p(1−p)` menganggap setiap baris independen. Pada kenyataannya satu pasien bisa muncul berkali-kali, sehingga varians sebenarnya lebih besar (overdispersi) dan z-score cenderung terlalu tinggi. Syarat stabilitas antar paruh periode membantu meredamnya. Perbaikan lanjutan: shrinkage empirical Bayes atau model efek acak per faskes.
 
-**Sudah ditambahkan: `z_od` (z disesuaikan untuk overdispersi).** Masukan coaching: pertimbangkan pengurutan audit berdasarkan z. z biasa naik seiring volume, sehingga di skala nasional hampir semua RS besar tampak signifikan. `z_overdispersi()` di `build.py` memakai metode efek acak aditif Spiegelhalter (2005), yaitu metode funnel plot SHMI:
-
-```
-se²  = V / E²                         (galat O/E per faskes)
-φ    = rerata z² (z dipangkas 10%/90%), faskes bervolume cukup se-Indonesia
-τ²   = max(0, (kφ − (k−1)) / (Σw − Σw²/Σw)),  w = 1/se²
-z_od = (O/E − 1) / √(se² + τ²)
-```
-
-| Modul | k faskes | φ | τ (skala O/E) |
-|---|---|---|---|
-| #3 Rujukan | 10.319 | 4,00 | 0,216 |
-| #4 Severity | 1.904 | 1,48 | 0,263 |
-| #9 Fragmentasi | 2.104 | 15,56 | 0,266 |
-| #16 Readmisi | 1.828 | 0,81 | 0 (tidak overdispersi; z_od = z) |
-
-`z_od` **tidak** mengubah status. Nilai ini hanya dipakai untuk urutan: antrean punya opsi urut *Prioritas*, yaitu P1 (z_od ≥ 3), P2 (≥ 1,96), dan P3, lalu rupiah tertimbang di dalam tiap kelas. Contoh: RS-31595 severity (n 670, O/E 1,46) punya z 6,19, tetapi z_od-nya 1,69, sehingga turun ke P3. Sebaliknya RS-31606 (n 140, O/E 3,12) tetap P1 dengan z_od 4,95. Di Kota Semarang, dari 67 temuan aktif, 5 masuk P1, 6 masuk P2, dan 56 masuk P3.
-
 ### 7.9 Rujukan belum ditautkan ke hasil di FKRTL
 Narasi menyebut SIDAK "menautkan rujukan FKTP ke klaim RS-nya". Di `build.py`, modul rujukan menghitung O/E di sisi FKTP saja; tautan per kunjungan lewat `FKP02` (No Asal Rujukan) belum dipakai. Biaya hilirnya pun berupa rerata. Penautan ini bisa menjadi pembeda kuat dibanding tim "rujukan semu": misalnya, rujukan yang di FKRTL hanya berakhir pada kunjungan rawat jalan tanpa tindakan adalah sinyal rujukan yang tidak perlu.
 

@@ -21,8 +21,6 @@ export const STATUS: Record<Status, { label: string; warna: string; bg: string }
 export interface Kontrib { nama: string; O: number; E: number; n: number }
 export interface Hasil {
   n: number; O: number; E: number; OE: number | null; z: number | null; rate: number
-  /** z disesuaikan untuk overdispersi (variasi antarfaskes yang wajar); lihat pipeline/build.py */
-  z_od?: number | null
   status: Status; stabil: boolean; selisih: number; rupiah: number; rupiah_tertimbang: number
   kontributor: Kontrib[]
   pangsa_nonspes?: number | null; rate_sebelum_putih?: number | null; OE_sebelum_putih?: number | null; pangsa_putih?: number | null
@@ -97,21 +95,6 @@ export const rp = (v: number | null | undefined, digit = 1): string => {
 export const num = (v: number | null | undefined, digit = 0): string =>
   v == null || isNaN(v) ? '–' : v.toLocaleString('id-ID', { minimumFractionDigits: digit, maximumFractionDigits: digit })
 export const pct = (v: number | null | undefined, digit = 1): string => (v == null || isNaN(v) ? '–' : num(v, digit) + '%')
-/** Ambang prioritas audit pada skor z disesuaikan. */
-export const Z_KUAT = 3
-export type Prioritas = 1 | 2 | 3
-export const PRIORITAS: Record<Prioritas, { label: string; ket: string }> = {
-  1: { label: 'P1', ket: `z disesuaikan ≥ ${Z_KUAT}: pola tetap menonjol setelah variasi antarfaskes yang wajar diperhitungkan` },
-  2: { label: 'P2', ket: 'z disesuaikan ≥ 1,96: menonjol, tetapi bisa jadi bagian dari variasi antarfaskes' },
-  3: { label: 'P3', ket: 'z disesuaikan < 1,96: selisih masih dalam variasi antarfaskes yang wajar' },
-}
-/** Kelas prioritas dari z disesuaikan (fallback ke z biasa bila data lama). */
-export function prioritas(h: Hasil): Prioritas {
-  const z = h.z_od ?? h.z
-  if (z == null) return 3
-  return z >= Z_KUAT ? 1 : z >= 1.96 ? 2 : 3
-}
-
 export const oe = (v: number | null | undefined): string => (v == null || isNaN(v) ? '–' : v.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 
 export const judulKab = (k: string) => k.split(' ').map(w => (w === 'KOTA' ? 'Kota' : w.charAt(0) + w.slice(1).toLowerCase())).join(' ')

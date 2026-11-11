@@ -5,18 +5,9 @@ import { Cari, Pager, Pilih, onEnter } from '../components/Common'
 import { FilterCheck, FilterChips } from '../components/Filter'
 import { Icon } from '../components/Icon'
 import { LABEL_AUDIT, OEChip, Progres, RupiahText, StatusPill } from '../components/sig'
-import { CATATAN_KEY, Faskes, INFO, KOTA, MODUL, Modul, PRIORITAS, Prioritas, STATUS, Status, StatusAudit, TAB_KEY, Z_KUAT, ambilJSON, bacaStatusAudit, judulKab, num, prioritas, rp, simpanStatusAudit, useData } from '../lib/data'
+import { CATATAN_KEY, Faskes, INFO, KOTA, MODUL, Modul, STATUS, Status, StatusAudit, TAB_KEY, ambilJSON, bacaStatusAudit, judulKab, num, rp, simpanStatusAudit, useData } from '../lib/data'
 
-interface Baris { key: string; f: Faskes; m: Modul; status: Status; OE: number | null; z: number | null; z_od: number | null; pr: Prioritas; n: number; rupiah_t: number }
-
-const URUT_OPSI = [
-  { nilai: 'rupiah_t', label: 'Rupiah tertimbang' },
-  { nilai: 'prioritas', label: 'Prioritas (z disesuaikan, lalu rupiah)' },
-  { nilai: 'z_od', label: 'Skor z disesuaikan' },
-  { nilai: 'z', label: 'Skor z biasa' },
-  { nilai: 'OE', label: 'O/E' },
-  { nilai: 'n', label: 'Volume' },
-]
+interface Baris { key: string; f: Faskes; m: Modul; status: Status; OE: number | null; z: number | null; n: number; rupiah_t: number }
 
 interface Simpan { label: string; wil: string; mods: string; sts: string; urut: string; kelas: string; q: string }
 
@@ -59,13 +50,12 @@ export default function Antrean() {
       if (!stArr.includes(h.status)) return
       if (kelas !== 'semua' && f.kelas_pendek !== kelas) return
       if (ql && !f.label.toLowerCase().includes(ql) && !f.kab.toLowerCase().includes(ql) && !f.id.toLowerCase().includes(ql)) return
-      out.push({ key: f.id + '|' + m, f, m, status: h.status, OE: h.OE, z: h.z, z_od: h.z_od ?? null, pr: prioritas(h), n: h.n, rupiah_t: h.rupiah_tertimbang })
+      out.push({ key: f.id + '|' + m, f, m, status: h.status, OE: h.OE, z: h.z, n: h.n, rupiah_t: h.rupiah_tertimbang })
     }))
+    const ord = urutCol === 'OE' ? ((r: Baris) => r.OE) : urutCol === 'z' ? ((r: Baris) => r.z) : urutCol === 'n' ? ((r: Baris) => r.n) : ((r: Baris) => r.rupiah_t)
     const arah = urutNaik ? -1 : 1
-    // Prioritas: kelas z disesuaikan dulu (P1 > P2 > P3), di dalam kelas diurut rupiah tertimbang.
-    if (urutCol === 'prioritas') return out.sort((a, b) => arah * ((a.pr - b.pr) || (b.rupiah_t - a.rupiah_t)))
-    const ord = urutCol === 'OE' ? ((r: Baris) => r.OE) : urutCol === 'z' ? ((r: Baris) => r.z) : urutCol === 'z_od' ? ((r: Baris) => r.z_od) : urutCol === 'n' ? ((r: Baris) => r.n) : ((r: Baris) => r.rupiah_t)
-    return out.sort((a, b) => arah * (((ord(b) ?? -Infinity) as number) - ((ord(a) ?? -Infinity) as number)))
+    // nilai kosong (mis. z tanpa varians) selalu di bawah, apa pun arah urutnya
+    return out.sort((a, b) => { const x = ord(a), y = ord(b); if (x == null) return y == null ? 0 : 1; if (y == null) return -1; return arah * (y - x) })
   }, [dasar, modArr, stArr, kelas, urut, q])
 
   const kelasList = Array.from(new Set(dasar.map(f => f.kelas_pendek))).sort()
@@ -143,8 +133,8 @@ export default function Antrean() {
   const hapus = (t: Simpan) => tutupTabs(tabs.filter(x => x !== t))
 
   function ekspor() {
-    const head = ['faskes', 'tipe', 'kab_kota', 'kelas', 'kepemilikan', 'modul', 'status', 'stabil', 'n', 'O', 'E', 'OE', 'z', 'z_disesuaikan', 'prioritas', 'selisih_rupiah_sampel', 'selisih_rupiah_tertimbang', 'status_audit']
-    const lines = rows.map(r => { const h = r.f.modul[r.m]!; return [r.f.label, r.f.tipe, r.f.kab, r.f.kelas, r.f.milik, `#${INFO[r.m].nomor} ${INFO[r.m].nama}`, r.status, h.stabil ? 'ya' : 'tidak', h.n, h.O, h.E, h.OE ?? '', h.z ?? '', h.z_od ?? '', PRIORITAS[r.pr].label, h.rupiah, h.rupiah_tertimbang, LABEL_AUDIT[audit[r.f.id] ?? 'belum']].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';') })
+    const head = ['faskes', 'tipe', 'kab_kota', 'kelas', 'kepemilikan', 'modul', 'status', 'stabil', 'n', 'O', 'E', 'OE', 'z', 'selisih_rupiah_sampel', 'selisih_rupiah_tertimbang', 'status_audit']
+    const lines = rows.map(r => { const h = r.f.modul[r.m]!; return [r.f.label, r.f.tipe, r.f.kab, r.f.kelas, r.f.milik, `#${INFO[r.m].nomor} ${INFO[r.m].nama}`, r.status, h.stabil ? 'ya' : 'tidak', h.n, h.O, h.E, h.OE ?? '', h.z ?? '', h.rupiah, h.rupiah_tertimbang, LABEL_AUDIT[audit[r.f.id] ?? 'belum']].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';') })
     const blob = new Blob(['\ufeff' + [head.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sidak_antrean_audit.csv'; a.click()
   }
@@ -199,7 +189,7 @@ export default function Antrean() {
             <button type="button" className={wil === 'jateng' ? 'on' : ''} onClick={() => patch('wil', 'jateng')}>Jawa Tengah</button>
           </div>
           <Pilih label="Kelas" nilai={kelas} ubah={v => patch('kelas', v === 'semua' ? null : v)} opsi={KELAS_OPSI} />
-          <Pilih label="Urut" nilai={urutCol} ubah={v => patch('urut', v === 'rupiah_t' ? null : v)} opsi={URUT_OPSI} />
+          <Pilih label="Urut" nilai={urutCol} ubah={v => patch('urut', v === 'rupiah_t' ? null : v)} opsi={[{ nilai: 'rupiah_t', label: 'Rupiah tertimbang' }, { nilai: 'OE', label: 'O/E' }, { nilai: 'z', label: 'Skor z' }, { nilai: 'n', label: 'Volume' }]} />
           <span style={{ flex: 1 }} />
           <Cari nilai={q} ubah={v => patch('q', v || null)} saran="Cari kode / nama / kab" />
           <button className="btn" onClick={ekspor}><Icon path={mdiDownload} size={15} /> Ekspor CSV ({num(rows.length)})</button>
@@ -207,11 +197,7 @@ export default function Antrean() {
 
         <FilterChips chips={chipList} onHapus={key => { if (key === 'wil') patch('wil', 'semarang'); if (key === 'st') patch('st', 'perhatian|diamati'); if (key === 'mod') patch('mod', MODUL.join('|')); if (key === 'kelas') patch('kelas', null); if (key === 'q') patch('q', null) }} onHapusSemua={longgarkan} hasil={chipList.length > 0 ? (<>{rows.length} faskes cocok</>) : undefined} />
 
-        <div className="card soft" style={{ padding: '8px 12px', fontSize: 13, marginBottom: 8 }} aria-live="polite"><b>{rows.length}</b> temuan · selisih tertimbang <b>{rp(totalT)}</b>{sel.size > 0 && <> · <b>{sel.size}</b> dipilih</>}
-          {(urutCol === 'prioritas' || urutCol === 'z_od') && <div className="hint" style={{ marginTop: 4 }}>
-            <b>{rows.filter(r => r.pr === 1).length}</b> temuan P1 (z disesuaikan ≥ {Z_KUAT}). Skor z biasa membesar seiring volume, sehingga RS besar hampir selalu tampak signifikan; z disesuaikan memperhitungkan variasi antarfaskes yang wajar dari sebaran nasional.
-          </div>}
-        </div>
+        <div className="card soft" style={{ padding: '8px 12px', fontSize: 13, marginBottom: 8 }} aria-live="polite"><b>{rows.length}</b> temuan · selisih tertimbang <b>{rp(totalT)}</b>{sel.size > 0 && <> · <b>{sel.size}</b> dipilih</>}</div>
 
         {sel.size > 0 && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, padding: '8px 12px', background: 'var(--brand-tint)', borderRadius: 10, border: '1px solid var(--line)' }}>
@@ -228,8 +214,8 @@ export default function Antrean() {
               <thead><tr>
                 <th style={{ width: 30 }}><input className="checkbox-c" type="checkbox" aria-label="Pilih semua" checked={semuaTampil} onChange={toggleSemua} /></th>
                 <th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Modul</th><th>Status</th>
-                <th className="num" aria-sort={urutCol === 'OE' ? (urutNaik ? 'ascending' : 'descending') : undefined}><button type="button" className="th-sort" onClick={() => sort('OE')}>O/E (z){urutCol === 'OE' && (urutNaik ? ' ↑' : ' ↓')}</button></th>
-                <th className="num" aria-sort={urutCol === 'z_od' ? (urutNaik ? 'ascending' : 'descending') : undefined}><button type="button" className="th-sort" onClick={() => sort('z_od')} title="Skor z disesuaikan untuk variasi antarfaskes yang wajar">z disesuaikan{urutCol === 'z_od' && (urutNaik ? ' ↑' : ' ↓')}</button></th>
+                <th className="num" aria-sort={urutCol === 'OE' ? (urutNaik ? 'ascending' : 'descending') : undefined}><button type="button" className="th-sort" onClick={() => sort('OE')}>O/E{urutCol === 'OE' && (urutNaik ? ' ↑' : ' ↓')}</button></th>
+                <th className="num" aria-sort={urutCol === 'z' ? (urutNaik ? 'ascending' : 'descending') : undefined}><button type="button" className="th-sort" onClick={() => sort('z')} title="Seberapa jauh selisih O−E dari kebetulan; di atas 1,96 kecil kemungkinan hanya kebetulan">Skor z{urutCol === 'z' && (urutNaik ? ' ↑' : ' ↓')}</button></th>
                 <th className="num" aria-sort={urutCol === 'rupiah_t' ? (urutNaik ? 'ascending' : 'descending') : undefined}><button type="button" className="th-sort" onClick={() => sort('rupiah_t')}>≈ Selisih tbg{urutCol === 'rupiah_t' && (urutNaik ? ' ↑' : ' ↓')}</button></th>
                 <th>Progres</th><th>Catatan</th>
               </tr></thead>
@@ -241,8 +227,8 @@ export default function Antrean() {
                     {wil === 'jateng' && <td>{judulKab(r.f.kab)}</td>}
                     <td><span style={{ color: INFO[r.m].warna, fontWeight: 600 }}>#{INFO[r.m].nomor}</span> {INFO[r.m].pendek}</td>
                     <td><StatusPill s={r.status} /></td>
-                    <td className="num"><OEChip v={r.OE} z={r.z} n={r.n} st={r.status} /></td>
-                    <td className="num" title={PRIORITAS[r.pr].ket}><span className={'prio p' + r.pr}>{PRIORITAS[r.pr].label}</span> {r.z_od == null ? '–' : num(r.z_od, 1)}</td>
+                    <td className="num"><OEChip v={r.OE} n={r.n} st={r.status} /></td>
+                    <td className="num"><span className={r.z != null && r.z > 1.96 ? 'zsig' : undefined}>{r.z == null ? '–' : num(r.z, 2)}</span></td>
                     <td className="num"><RupiahText v={r.rupiah_t} /></td>
                     <td onClick={e => e.stopPropagation()}><Progres nilai={audit[r.f.id] ?? 'belum'} fb={s => setProgres(r.f, s)} /></td>
                     <td className="hint" style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 0 }}>{String(catatan[r.f.id] ?? '–')}</td>
