@@ -80,7 +80,30 @@ def hitung_riwayat(ev_key, ev_day, idx_key, idx_day, lookback):
     return np.searchsorted(ev, k, side="left") - np.searchsorted(ev, k - lookback, side="left")
 
 
-def tabel_oe(d, min_n, biaya, dimensi):
+OD = {}   # parameter overdispersi per modul, ditulis ke metrik
+
+
+def z_overdispersi(g, cukup):
+    """Skor z yang disesuaikan untuk overdispersi (Spiegelhalter 2005, efek acak aditif).
+
+    z biasa menganggap satu-satunya sumber variasi adalah kebetulan binomial, sehingga
+    faskes bervolume besar hampir selalu 'signifikan'. Di sini variasi antarfaskes yang
+    wajar (tau^2) ditaksir dari sebaran nasional, lalu ditambahkan ke galat tiap faskes.
+    Skala O/E: se = sqrt(V)/E, z = (O/E - 1)/se. Taksiran memakai faskes bervolume cukup
+    dengan z dipangkas (winsorized) 10%.
+    """
+    se2 = g.V / g.E ** 2
+    ok = cukup & (g.V > 0) & (g.E > 0)
+    zz = g.z[ok]
+    lo, hi = zz.quantile(0.10), zz.quantile(0.90)
+    k = int(ok.sum())
+    phi = float((zz.clip(lo, hi) ** 2).mean())
+    w = 1 / se2[ok]
+    tau2 = max(0.0, (k * phi - (k - 1)) / float(w.sum() - (w ** 2).sum() / w.sum())) if k > 1 else 0.0
+    return (g.OE - 1) / np.sqrt(se2 + tau2), {"k": k, "phi": round(phi, 2), "tau": round(tau2 ** 0.5, 3)}
+
+
+def tabel_oe(d, min_n, biaya, dimensi, nama=None):
     """d: kolom faskes, y, p, bln, bobot, dimensi. Mengembalikan tabel per faskes."""
     d = d.assign(v=d.p * (1 - d.p), h=d.bln % 2)
     g = d.groupby("faskes").agg(n=("y", "size"), O=("y", "sum"), E=("p", "sum"),
@@ -92,6 +115,9 @@ def tabel_oe(d, min_n, biaya, dimensi):
     g["z"] = (g.O - g.E) / np.sqrt(g.V.replace(0, np.nan))
     g["stabil"] = (oe1 > 1) & (oe2 > 1)
     cukup = g.n >= min_n
+    g["z_od"], od = z_overdispersi(g, cukup)
+    if nama:
+        OD[nama] = od
     tanda = cukup & (g.OE > 1.05) & (g.z > 1.96)
     amati = cukup & ~tanda & (g.OE > 1.05) & (g.z > 1.0)
     g["status"] = np.select([~cukup, tanda & g.stabil, tanda & ~g.stabil, amati],
@@ -206,7 +232,7 @@ biaya_readmisi = float(ri[ri.jeda.between(0, JENDELA)].FKL47.mean())  # rata2 ta
 biaya_readmisi = float(ri.merge(ri[["pid", "FKL03"]], left_on=["pid", "masuk_berikut"],
                                 right_on=["pid", "FKL03"], suffixes=("", "_b")).FKL47.mean()) if False else biaya_readmisi
 d_re = rl.rename(columns={"PSTV15": "bobot"})[["faskes", "y", "p", "bln", "bobot", "dimensi"]]
-T_re = tabel_oe(d_re, MIN_N["readmisi"], biaya_readmisi, "dimensi")
+T_re = tabel_oe(d_re, MIN_N["readmisi"], biaya_readmisi, "dimensi", "readmisi")
 MET = {"readmisi": {"n_latih": int(len(latih)), "n_uji": int(uji_mask.sum()), "iterasi": it,
                     "auc": round(auc, 3), "auc_strata": round(auc_strata, 3),
                     "oe_agregat_uji": round(float(rl.y[uji_mask].sum() / rl.p[uji_mask].sum()), 3),
@@ -234,7 +260,7 @@ delta_faskes = sv.groupby("faskes").delta.mean()
 jam("GBM severity: %d iterasi, AUC uji %.3f, pangsa III %.1f%%, delta tarif median Rp %s"
     % (it_s, auc_s, sv.y.mean() * 100, f(delta.median())))
 d_sv = sv.rename(columns={"PSTV15": "bobot"})[["faskes", "y", "p", "bln", "bobot", "dimensi"]]
-T_sv = tabel_oe(d_sv, MIN_N["severity"], 1.0, "dimensi")
+T_sv = tabel_oe(d_sv, MIN_N["severity"], 1.0, "dimensi", "severity")
 T_sv["rupiah"] = T_sv.selisih * delta_faskes.reindex(T_sv.index).fillna(delta.median())
 T_sv["rupiah_tertimbang"] = T_sv.rupiah * T_sv.bobot
 MET["severity"] = {"n_latih": int(len(latih_s)), "n_uji": int(uji_s.sum()), "iterasi": it_s, "auc": round(auc_s, 3),
@@ -261,7 +287,7 @@ biaya_rjtl = rj.groupby("faskes").FKL47.mean()
 d_fr_semua = rj.rename(columns={"PSTV15": "bobot"})[["faskes", "y", "p", "bln", "bobot", "dimensi", "putih"]]
 T_fr_sebelum = tabel_oe(d_fr_semua, MIN_N["fragmentasi"], 1.0, "dimensi")
 d_fr = d_fr_semua[~d_fr_semua.putih]
-T_fr = tabel_oe(d_fr, MIN_N["fragmentasi"], 1.0, "dimensi")
+T_fr = tabel_oe(d_fr, MIN_N["fragmentasi"], 1.0, "dimensi", "fragmentasi")
 for T in (T_fr, T_fr_sebelum):
     T["rupiah"] = T.selisih * biaya_rjtl.reindex(T.index).fillna(biaya_rjtl.median())
     T["rupiah_tertimbang"] = T.rupiah * T.bobot
@@ -319,10 +345,21 @@ del df, rj, ri
 
 # ====================================================================== RUJUKAN (FKTP)
 jam("membaca FKTP")
-fk = pd.read_csv(os.path.join(CSV, "202402_fktpkapitasi.csv"),
-                 usecols=["PSTV01", "PSTV15", "FKP02", "FKP03", "FKP05", "FKP06", "FKP07", "FKP08", "FKP13", "FKP14A", "FKP22"],
-                 low_memory=False)
-fk = fk[(fk.FKP03.astype(str).str[:4] == "2024") & (fk.FKP22 == "KUNJUNGAN SAKIT")].copy()
+_cf = os.path.join(CACHE, "fktp2024.parquet")
+if os.path.exists(_cf):
+    fk = pd.read_parquet(_cf)
+else:
+    # dibaca per potongan agar memori puncak tetap rendah; hanya kunjungan sakit 2024 yang disimpan
+    bag = []
+    for ch in pd.read_csv(os.path.join(CSV, "202402_fktpkapitasi.csv"),
+                          usecols=["PSTV01", "PSTV15", "FKP02", "FKP03", "FKP05", "FKP06", "FKP07", "FKP08", "FKP13", "FKP14A", "FKP22"],
+                          dtype=str, chunksize=1_000_000):
+        bag.append(ch[(ch.FKP03.str[:4] == "2024") & (ch.FKP22 == "KUNJUNGAN SAKIT")])
+    fk = pd.concat(bag, ignore_index=True)
+    del bag
+    fk["PSTV15"] = pd.to_numeric(fk.PSTV15, errors="coerce")
+    fk.to_parquet(_cf)
+fk = fk.copy()
 fk["faskes"] = fk.FKP02.str[:-11]
 fk["bln"] = fk.FKP03.astype(str).str[5:7].astype(int)
 fk["y"] = (fk.FKP13 == "RUJUK LANJUT").astype(int)
@@ -342,7 +379,7 @@ fk["p"] = pd.Series(g1.reindex(key).to_numpy(), index=fk.index)
 fk["p"] = fk.p.fillna(fk.dx.map(g2)).fillna(fk.y.mean())
 fk["dimensi"] = fk.dx
 d_ru = fk.rename(columns={"PSTV15": "bobot"})[["faskes", "y", "p", "bln", "bobot", "dimensi"]]
-T_ru = tabel_oe(d_ru, MIN_N["rujukan"], biaya_rujukan, "dimensi")
+T_ru = tabel_oe(d_ru, MIN_N["rujukan"], biaya_rujukan, "dimensi", "rujukan")
 T_ru["pangsa_nonspes"] = fk[fk.y == 1].groupby("faskes").nonspes.mean().reindex(T_ru.index)
 prof_f = fk.groupby("faskes").agg(prov=("FKP05", "first"), kab=("FKP06", "first"), milik=("FKP07", "first"),
                                   jenis=("FKP08", "first"))
@@ -361,6 +398,9 @@ del fk
 jam("menulis keluaran")
 MODUL = {"rujukan": T_ru, "severity": T_sv, "fragmentasi": T_fr, "readmisi": T_re}
 NOMOR = {"rujukan": 3, "severity": 4, "fragmentasi": 9, "readmisi": 16}
+for nama in MODUL:
+    MET[nama]["overdispersi"] = OD[nama]
+    jam("overdispersi %-11s faskes %5d | phi %6.2f | tau %.3f" % (nama, OD[nama]["k"], OD[nama]["phi"], OD[nama]["tau"]))
 
 
 def baris(T, fk, ekstra=()):
@@ -368,6 +408,7 @@ def baris(T, fk, ekstra=()):
     o = {"n": int(r.n), "O": int(r.O), "E": round(float(r.E), 1),
          "OE": round(float(r.OE), 3) if pd.notna(r.OE) else None,
          "z": round(float(r.z), 2) if pd.notna(r.z) else None,
+         "z_od": round(float(r.z_od), 2) if pd.notna(r.z_od) else None,
          "rate": round(float(r.rate) * 100, 1), "status": str(r.status), "stabil": bool(r.stabil),
          "selisih": round(float(r.selisih), 1), "rupiah": round(float(r.rupiah)),
          "rupiah_tertimbang": round(float(r.rupiah_tertimbang)),

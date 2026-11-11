@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon'
 import { Sparkle } from '../components/Sparkle'
 import { useAi } from '../components/ai'
 import { DotPlot, FaskesCode, LABEL_AUDIT, OEChip, Progres, RupiahText, StatusPill } from '../components/sig'
-import { AKTIVITAS_KEY, CATATAN_KEY, Faskes, INFO, KOTA, MODUL, Modul, STATUS, StatusAudit, TEMUAN_KEY, ambilJSON, bacaStatusAudit, judulKab, num, oe, pct, rp, sebaya, simpanJSON, simpanStatusAudit, useData } from '../lib/data'
+import { AKTIVITAS_KEY, CATATAN_KEY, Faskes, INFO, KOTA, MODUL, Modul, PRIORITAS, STATUS, StatusAudit, TEMUAN_KEY, ambilJSON, bacaStatusAudit, judulKab, num, oe, pct, prioritas, rp, sebaya, simpanJSON, simpanStatusAudit, useData } from '../lib/data'
 
 const OPSI_TEMUAN = ['Belum ada kesimpulan', 'Dokumentasi medis tidak lengkap', 'Kode perlu klarifikasi', 'Proses layanan perlu perbaikan', 'Tidak ditemukan masalah setelah pemeriksaan']
 
@@ -128,7 +128,8 @@ export default function Profil() {
             </div>
             <div className="metrik" style={{ marginTop: 12 }}>
               <KpiCard role="ratio" label="O/E" value={oe(h!.OE)} oe={h!.OE} variant="sm" />
-              <KpiCard role="neutral" label="Skor z" value={h!.z == null ? '–' : num(h!.z, 2)} variant="sm" />
+              <KpiCard role="neutral" label="Skor z" value={h!.z == null ? '–' : num(h!.z, 2)} variant="sm"
+                hint={h!.z_od != null ? <>disesuaikan <b>{num(h!.z_od, 2)}</b> · {PRIORITAS[prioritas(h!)].label}</> : undefined} />
               <KpiCard role="coverage" label={`Volume ${INFO[m].kejadian.toLowerCase()}`} value={num(h!.n)} variant="sm" />
               <KpiCard role="money" label="≈ Selisih tertimbang" value={rp(h!.rupiah_tertimbang)} variant="sm" />
             </div>

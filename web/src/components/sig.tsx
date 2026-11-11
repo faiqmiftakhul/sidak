@@ -139,7 +139,7 @@ const AKORDEON = [
   {
     jdl: 'Skor z — kebetulan atau bukan',
     isi: (
-      <>Mengukur apakah selisih (O−E) sekadar kebetulan. <b>z &gt; 1,96</b> berarti kecil kemungkinan selisih terjadi secara acak (P≈0,05). O/E dan z dibaca berpasangan: faskes kecil bisa ber-O/E tinggi tetapi z-nya rendah.</>
+      <>Mengukur apakah selisih (O−E) sekadar kebetulan. <b>z &gt; 1,96</b> berarti kecil kemungkinan selisih terjadi secara acak (P≈0,05). O/E dan z dibaca berpasangan: faskes kecil bisa ber-O/E tinggi tetapi z-nya rendah. Karena z biasa membesar seiring volume, antrean juga menampilkan <b>z disesuaikan</b>, yang memperhitungkan variasi antarfaskes yang wajar; ≥ 3 = prioritas P1.</>
     ),
   },
   {

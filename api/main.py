@@ -66,6 +66,20 @@ class Store:
 S = Store()
 
 
+def zod(h):
+    """z disesuaikan untuk overdispersi; fallback ke z biasa untuk data lama."""
+    z = h.get("z_od")
+    if z is None:
+        z = h.get("z")
+    return z if z is not None else float("-inf")
+
+
+def prioritas(h):
+    """P1: z disesuaikan >= 3, P2: >= 1,96, P3: sisanya."""
+    z = zod(h)
+    return "P1" if z >= 3 else "P2" if z >= 1.96 else "P3"
+
+
 def rp(v):
     if v is None:
         return "-"
@@ -87,6 +101,7 @@ def ringkas_faskes(f, m=None):
             continue
         o["modul"][k] = {"nomor": NOMOR[k], "nama": NAMA[k], "status": STATUS[h["status"]], "stabil_dua_paruh": h["stabil"],
                          "volume": h["n"], "observed": h["O"], "expected": h["E"], "OE": h["OE"], "z": h["z"],
+                         "z_disesuaikan": h.get("z_od"), "prioritas": prioritas(h),
                          "angka_mentah_pct": h["rate"], "selisih_kejadian": h["selisih"],
                          "selisih_rupiah_sampel": h["rupiah"], "selisih_rupiah_tertimbang": h["rupiah_tertimbang"],
                          "penyumbang_terbesar": h.get("kontributor", [])}
@@ -122,14 +137,15 @@ def daftar_temuan(wilayah="semarang", modul=None, status="aktif", urut="rupiah_t
                 continue
             rows.append((f, k, h))
     key = {"rupiah_tertimbang": lambda r: r[2]["rupiah_tertimbang"], "rupiah": lambda r: r[2]["rupiah"],
-           "OE": lambda r: r[2]["OE"] or 0, "z": lambda r: r[2]["z"] or 0, "volume": lambda r: r[2]["n"]}.get(urut, lambda r: r[2]["rupiah_tertimbang"])
+           "OE": lambda r: r[2]["OE"] or 0, "z": lambda r: r[2]["z"] or 0, "volume": lambda r: r[2]["n"],
+           "z_disesuaikan": lambda r: zod(r[2]), "prioritas": lambda r: (-int(prioritas(r[2])[1]), r[2]["rupiah_tertimbang"])}.get(urut, lambda r: r[2]["rupiah_tertimbang"])
     rows.sort(key=key, reverse=True)
     if sedikit:
         # Baris tipis untuk pertanyaan daftar/peringkat: cukup untuk tabel mini.
         return {"wilayah": wil, "jumlah_temuan": len(rows), "tautan": "/antrean",
                 "temuan": [{"faskes": f["label"], "tipe": f["tipe"], "kelas": f["kelas_pendek"],
                             "modul": NAMA[k], "nomor": NOMOR[k], "status": STATUS[h["status"]],
-                            "OE": h["OE"], "z": h["z"],
+                            "OE": h["OE"], "z": h["z"], "z_disesuaikan": h.get("z_od"), "prioritas": prioritas(h),
                             "selisih_rupiah_tertimbang": h["rupiah_tertimbang"], "tautan": "/faskes/" + f["id"]}
                            for f, k, h in rows[:min(int(jumlah), 20)]]}
     return {"wilayah": wil, "jumlah_temuan": len(rows),
@@ -253,11 +269,11 @@ def metodologi(topik=None):
 
 
 ALAT = {
-    "daftar_temuan": (daftar_temuan, "Daftar faskes yang ditandai (antrean audit), urut rupiah/O/E/z. Gunakan untuk 'siapa yang paling perlu diperhatikan'.",
+    "daftar_temuan": (daftar_temuan, "Daftar faskes yang ditandai (antrean audit), urut rupiah/O/E/z/prioritas. prioritas = P1 (z disesuaikan >= 3) > P2 (>= 1,96) > P3, lalu rupiah tertimbang; z disesuaikan memperhitungkan variasi antarfaskes yang wajar sehingga RS besar tidak otomatis di atas. Gunakan untuk 'siapa yang paling perlu diperhatikan'.",
                       {"wilayah": {"type": "string", "description": "semarang | jateng | nama kab/kota Jawa Tengah"},
                        "modul": {"type": "string", "enum": list(NOMOR), "description": "kosongkan untuk semua modul"},
                        "status": {"type": "string", "enum": ["aktif", "perhatian", "diamati", "wajar", "semua"]},
-                       "urut": {"type": "string", "enum": ["rupiah_tertimbang", "rupiah", "OE", "z", "volume"]},
+                       "urut": {"type": "string", "enum": ["rupiah_tertimbang", "prioritas", "z_disesuaikan", "rupiah", "OE", "z", "volume"]},
                        "jumlah": {"type": "integer"},
                        "sedikit": {"type": "boolean", "description": "true = hanya baris tipis untuk tabel mini (tanpa rincian modul)"}}),
     "jelaskan_temuan": (jelaskan_temuan, "Kartu penjelasan satu faskes: O, E, O/E, z, status, penyumbang, pembanding sebaya, bulanan. Gunakan untuk 'kenapa RS-xxxx ditandai'.",

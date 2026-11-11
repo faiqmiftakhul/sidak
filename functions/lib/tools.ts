@@ -1,7 +1,7 @@
 // Port 1:1 dari api/main.py — fungsi alat baca-saja + registry TOOLS.
 // Setiap alat async (loader data statis) dan mengembalikan objek identik py.
 
-import { KOTA, NAMA, NOMOR, STATUS, int, store, wilayahFaskes, ringkasFaskes } from "./data"
+import { KOTA, NAMA, NOMOR, STATUS, int, kelasPrioritas, store, wilayahFaskes, ringkasFaskes, zod } from "./data"
 import type { Faskes } from "./data"
 
 type Arg = Record<string, unknown>
@@ -36,7 +36,7 @@ const daftarTemuan = async (a: Arg): Promise<Hasil> => {
       rows.push([f, k, h])
     }
   }
-  const key = (h: any) => ({ rupiah_tertimbang: h.rupiah_tertimbang, rupiah: h.rupiah, OE: h.OE || 0, z: h.z || 0, volume: h.n } as Record<string, number>)[urut] ?? h.rupiah_tertimbang
+  const key = (h: any) => ({ rupiah_tertimbang: h.rupiah_tertimbang, rupiah: h.rupiah, OE: h.OE || 0, z: h.z || 0, volume: h.n, z_disesuaikan: zod(h), prioritas: (4 - kelasPrioritas(h)) * 1e15 + h.rupiah_tertimbang } as Record<string, number>)[urut] ?? h.rupiah_tertimbang
   rows.sort((x, y) => key(y[2]) - key(x[2]))
   const n = Math.min(jumlah, 20)
   if (sedikit) {
@@ -45,7 +45,7 @@ const daftarTemuan = async (a: Arg): Promise<Hasil> => {
       temuan: rows.slice(0, n).map(([f, k, h]) => ({
         faskes: f.label, tipe: f.tipe, kelas: f.kelas_pendek,
         modul: NAMA[k], nomor: NOMOR[k], status: STATUS[h.status],
-        OE: h.OE, z: h.z, selisih_rupiah_tertimbang: h.rupiah_tertimbang, tautan: "/faskes/" + f.id,
+        OE: h.OE, z: h.z, z_disesuaikan: h.z_od ?? null, prioritas: "P" + kelasPrioritas(h), selisih_rupiah_tertimbang: h.rupiah_tertimbang, tautan: "/faskes/" + f.id,
       })),
     }
   }
@@ -241,7 +241,7 @@ export const ALAT: Record<string, Fn> = {
 
 const _desk = (d: string): string => d
 export const TOOLS = [
-  { name: "daftar_temuan", description: "Daftar faskes yang ditandai (antrean audit), urut rupiah/O/E/z. Gunakan untuk 'siapa yang paling perlu diperhatikan'.", input_schema: { type: "object", properties: { wilayah: { type: "string", description: _desk("semarang | jateng | nama kab/kota Jawa Tengah") }, modul: { type: "string", enum: Object.keys(NOMOR), description: "kosongkan untuk semua modul" }, status: { type: "string", enum: ["aktif", "perhatian", "diamati", "wajar", "semua"] }, urut: { type: "string", enum: ["rupiah_tertimbang", "rupiah", "OE", "z", "volume"] }, jumlah: { type: "integer" }, sedikit: { type: "boolean", description: "true = hanya baris tipis untuk tabel mini (tanpa rincian modul)" } }, additionalProperties: false } },
+  { name: "daftar_temuan", description: "Daftar faskes yang ditandai (antrean audit), urut rupiah/O/E/z/prioritas. prioritas = P1 (z disesuaikan >= 3) > P2 (>= 1,96) > P3, lalu rupiah tertimbang; z disesuaikan memperhitungkan variasi antarfaskes yang wajar sehingga RS besar tidak otomatis di atas. Gunakan untuk 'siapa yang paling perlu diperhatikan'.", input_schema: { type: "object", properties: { wilayah: { type: "string", description: _desk("semarang | jateng | nama kab/kota Jawa Tengah") }, modul: { type: "string", enum: Object.keys(NOMOR), description: "kosongkan untuk semua modul" }, status: { type: "string", enum: ["aktif", "perhatian", "diamati", "wajar", "semua"] }, urut: { type: "string", enum: ["rupiah_tertimbang", "prioritas", "z_disesuaikan", "rupiah", "OE", "z", "volume"] }, jumlah: { type: "integer" }, sedikit: { type: "boolean", description: "true = hanya baris tipis untuk tabel mini (tanpa rincian modul)" } }, additionalProperties: false } },
   { name: "jelaskan_temuan", description: "Kartu penjelasan satu faskes: O, E, O/E, z, status, penyumbang, pembanding sebaya, bulanan. Gunakan untuk 'kenapa RS-xxxx ditandai'.", input_schema: { type: "object", properties: { faskes: { type: "string", description: "kode, mis. RS-31595 atau FKTP-12345" }, modul: { type: "string", enum: Object.keys(NOMOR) } }, additionalProperties: false } },
   { name: "ambil_indikator", description: "Agregat satu modul untuk suatu wilayah, opsional dipecah per kelas/kepemilikan/jenis FKTP. Termasuk tren bulanan dan metrik model untuk Semarang.", input_schema: { type: "object", properties: { modul: { type: "string", enum: Object.keys(NOMOR) }, wilayah: { type: "string" }, pecah: { type: "string", enum: ["kelas", "kepemilikan", "jenis_fktp"] } }, additionalProperties: false } },
   { name: "bandingkan_kabkota", description: "Peringkat kabupaten/kota Jawa Tengah untuk satu modul (peta L1).", input_schema: { type: "object", properties: { modul: { type: "string", enum: Object.keys(NOMOR) }, urut: { type: "string", enum: ["OE", "rate", "rupiah_tertimbang", "n_perhatian"] }, jumlah: { type: "integer" } }, additionalProperties: false } },

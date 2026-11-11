@@ -6,7 +6,7 @@ import KpiCard from '../components/KpiCard'
 import { OEChip, Progres, RupiahText, Spark, StatusPill } from '../components/sig'
 import { Sparkle } from '../components/Sparkle'
 import { useAi } from '../components/ai'
-import { Faskes, INFO, KOTA, Modul, STATUS, bacaStatusAudit, num, oe, pct, rp, simpanStatusAudit, useData } from '../lib/data'
+import { Faskes, INFO, KOTA, Modul, STATUS, Z_KUAT, bacaStatusAudit, num, oe, pct, rp, simpanStatusAudit, useData } from '../lib/data'
 
 const DEF: Record<Modul, { apa: string; kejadian: string; wajar: string; putih: string; sorot: string }> = {
   rujukan: {
@@ -46,13 +46,14 @@ export default function ModulPage() {
   const { buka } = useAi()
   const [sp, setSP] = useSearchParams()
   const wil = (sp.get('wil') === 'jateng' ? 'jateng' : 'semarang') as 'semarang' | 'jateng'
-  const nilai = (sp.get('nilai') as 'OE' | 'rate' | 'rupiah') || 'OE'
+  const nilai = (sp.get('nilai') as 'OE' | 'rate' | 'rupiah' | 'z_od') || 'OE'
   const putih = sp.get('putih') !== '0'
   const patch = (k: string, v: string | null) => { const n = new URLSearchParams(sp); if (v == null || v === '') n.delete(k); else n.set(k, v); setSP(n, { replace: true }) }
 
   const info = INFO[m], def = DEF[m], p = ring.per_modul[m]
   const rows = faskes.filter(f => f.modul[m] && (wil === 'jateng' || f.kab === KOTA) && f.modul[m]!.status !== 'volume_rendah')
-  const urut = [...rows].sort((a, b) => (nilai === 'rupiah' ? b.modul[m]!.rupiah - a.modul[m]!.rupiah : nilai === 'rate' ? b.modul[m]!.rate - a.modul[m]!.rate : (b.modul[m]!.OE ?? 0) - (a.modul[m]!.OE ?? 0)))
+  const zod = (f: Faskes) => f.modul[m]!.z_od ?? f.modul[m]!.z ?? -Infinity
+  const urut = [...rows].sort((a, b) => (nilai === 'rupiah' ? b.modul[m]!.rupiah - a.modul[m]!.rupiah : nilai === 'rate' ? b.modul[m]!.rate - a.modul[m]!.rate : nilai === 'z_od' ? zod(b) - zod(a) : (b.modul[m]!.OE ?? 0) - (a.modul[m]!.OE ?? 0)))
   const chartRows = urut.slice(0, wil === 'jateng' ? 25 : 30)
   const [page, setPage] = useState(1)
   const [per, setPer] = useState(50)
@@ -93,14 +94,14 @@ export default function ModulPage() {
           <button type="button" className={wil === 'semarang' ? 'on' : ''} onClick={() => patch('wil', 'semarang')}>Kota Semarang</button>
           <button type="button" className={wil === 'jateng' ? 'on' : ''} onClick={() => patch('wil', 'jateng')}>Jawa Tengah (25 teratas)</button>
         </div>
-        <Pilih label="Urut" nilai={nilai} ubah={v => patch('nilai', v === 'OE' ? null : v)} opsi={[{ nilai: 'OE', label: 'O/E' }, { nilai: 'rate', label: 'Angka mentah' }, { nilai: 'rupiah', label: 'Selisih rupiah' }]} />
+        <Pilih label="Urut" nilai={nilai} ubah={v => patch('nilai', v === 'OE' ? null : v)} opsi={[{ nilai: 'OE', label: 'O/E' }, { nilai: 'z_od', label: 'Skor z disesuaikan' }, { nilai: 'rate', label: 'Angka mentah' }, { nilai: 'rupiah', label: 'Selisih rupiah' }]} />
         {m === 'fragmentasi' && <label className="cek"><input type="checkbox" checked={putih} onChange={e => patch('putih', e.target.checked ? null : '0')} /> Terapkan daftar putih klinis</label>}
       </div>
 
       <div className="grid2">
         <div className="card">
-          <h3>Peringkat {info.unit} ({nilai === 'OE' ? 'O/E · tanda 1,0 = wajar' : nilai === 'rate' ? 'angka mentah' : 'selisih rupiah'})</h3>
-          <Peringkat rows={chartRows} m={m} nilai={nilai} tinggi={Math.max(260, chartRows.length * 20)} refX={nilai === 'OE' ? 1 : undefined} />
+          <h3>Peringkat {info.unit} ({nilai === 'OE' ? 'O/E · tanda 1,0 = wajar' : nilai === 'z_od' ? `skor z disesuaikan · tanda ${Z_KUAT} = prioritas P1` : nilai === 'rate' ? 'angka mentah' : 'selisih rupiah'})</h3>
+          <Peringkat rows={chartRows} m={m} nilai={nilai} tinggi={Math.max(260, chartRows.length * 20)} refX={nilai === 'OE' ? 1 : nilai === 'z_od' ? Z_KUAT : undefined} />
           <div className="hint">Warna = status. Klik nama di tabel bawah untuk membuka profil.</div>
         </div>
         <div className="card">

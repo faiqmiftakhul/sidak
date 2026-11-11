@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { INFO, MODUL, num, oe, pct, rp, useData } from '../lib/data'
 
 export default function Metodologi() {
@@ -17,6 +18,19 @@ export default function Metodologi() {
         <p style={{ fontSize: 13, lineHeight: 1.6 }}>
           Status <b>Perlu perhatian</b> diberikan bila O/E &gt; 1,05 <u>dan</u> z &gt; 1,96 <u>dan</u> polanya konsisten pada dua paruh periode (bulan ganjil vs genap). Bila melewati ambang tetapi tidak konsisten, atau hanya melewati sebagian ambang, statusnya <b>Diamati</b>. Faskes dengan volume di bawah minimum tidak dinilai. Selisih rupiah = (O − E) × biaya rata-rata per kejadian; nilai <b>tertimbang</b> mengalikan dengan bobot sampel peserta untuk menaksir skala populasi JKN.
         </p>
+      </div>
+
+      <div className="card">
+        <h3>Mengurutkan antrean audit: skor z disesuaikan</h3>
+        <p style={{ fontSize: 13, lineHeight: 1.6 }}>
+          Skor z biasa membesar seiring volume. RS dengan puluhan ribu klaim dan O/E 1,1 bisa ber-z lebih tinggi daripada klinik dengan O/E 2,0, sehingga di skala nasional hampir semua RS besar tampak "signifikan". Sebaliknya, O/E menonjolkan faskes kecil yang angkanya mudah melonjak karena kebetulan.
+        </p>
+        <p style={{ fontSize: 13, lineHeight: 1.6 }}>
+          <b>Skor z disesuaikan</b> menambahkan variasi antarfaskes yang wajar (τ) ke galat setiap faskes, ditaksir dari sebaran nasional dengan metode efek acak aditif (Spiegelhalter 2005, dipakai pada funnel plot SHMI di NHS). Opsi urut <b>Prioritas</b> di antrean mengelompokkan temuan menjadi <b>P1</b> (z disesuaikan ≥ 3), <b>P2</b> (≥ 1,96), dan <b>P3</b>, lalu mengurutkan rupiah tertimbang di dalam tiap kelompok: polanya pasti tidak kebetulan, dan dampaknya besar. Status faskes tetap memakai aturan di atas; z disesuaikan hanya mengubah urutan.
+        </p>
+        {M.readmisi.overdispersi && <div className="kv" style={{ fontSize: 13 }}>
+          {MODUL.map(m => M[m].overdispersi && <Fragment key={m}><span className="k">#{INFO[m].nomor} {INFO[m].pendek}</span><span>τ {num(M[m].overdispersi.tau, 3)} pada skala O/E · {num(M[m].overdispersi.k)} faskes nasional · φ {num(M[m].overdispersi.phi, 2)}</span></Fragment>)}
+        </div>}
       </div>
 
       <h2>Per modul</h2>

@@ -989,7 +989,12 @@
 "base_rate": 13.6,
 "biaya_per_kejadian": 5698402,
 "n_dikecualikan_meninggal": 5085,
-"n_dikecualikan_jendela": 15800
+"n_dikecualikan_jendela": 15800,
+"overdispersi": {
+"k": 1828,
+"phi": 0.81,
+"tau": 0.0
+}
 },
 "severity": {
 "n_latih": 97080,
@@ -998,14 +1003,24 @@
 "auc": 0.871,
 "pangsa_iii_nasional": 4.8,
 "delta_tarif_median": 2938911,
-"oe_agregat_uji": 0.905
+"oe_agregat_uji": 0.905,
+"overdispersi": {
+"k": 1904,
+"phi": 1.48,
+"tau": 0.263
+}
 },
 "fragmentasi": {
 "n_kunjungan": 1503675,
 "rate_nasional_7hr": 34.8,
 "pangsa_putih_nasional": 17.5,
 "rate_nasional_setelah_putih": 23.8,
-"biaya_per_kejadian_median": 249525
+"biaya_per_kejadian_median": 249525,
+"overdispersi": {
+"k": 2104,
+"phi": 15.56,
+"tau": 0.266
+}
 },
 "rujukan": {
 "n_kunjungan": 2596846,
@@ -1054,7 +1069,12 @@
 "dx": "I15",
 "n": 117
 }
-]
+],
+"overdispersi": {
+"k": 10319,
+"phi": 4.0,
+"tau": 0.216
+}
 }
 },
 "min_n": {

@@ -18,7 +18,7 @@ export const STATUS: Record<string, string> = {
 }
 
 export interface Indikator {
-  n: number; O: number; E: number; OE: number; z: number; rate: number
+  n: number; O: number; E: number; OE: number; z: number; z_od?: number | null; rate: number
   status: string; stabil: boolean; selisih: number
   rupiah: number; rupiah_tertimbang: number; kontributor: unknown[]
 }
@@ -141,6 +141,11 @@ export async function wilayahFaskes(wilayah?: string): Promise<{ fs: Faskes[]; w
   return { fs: S.faskes.filter(f => f.kab === KOTA), wil: KOTA }
 }
 
+/** z disesuaikan untuk overdispersi; fallback ke z biasa untuk data lama. */
+export const zod = (h: any): number => h.z_od ?? h.z ?? -Infinity
+/** 1: z disesuaikan >= 3, 2: >= 1,96, 3: sisanya. */
+export const kelasPrioritas = (h: any): 1 | 2 | 3 => { const z = zod(h); return z >= 3 ? 1 : z >= 1.96 ? 2 : 3 }
+
 export function ringkasFaskes(f: Faskes, m?: string | null): Record<string, unknown> {
   const o: Record<string, unknown> = {
     faskes: f.label, tipe: f.tipe, kab_kota: f.kab, kelas: f.kelas_pendek, kepemilikan: f.milik,
@@ -153,7 +158,7 @@ export function ringkasFaskes(f: Faskes, m?: string | null): Record<string, unkn
     if (!h) continue
     mo[k] = {
       nomor: NOMOR[k], nama: NAMA[k], status: STATUS[h.status], stabil_dua_paruh: h.stabil,
-      volume: h.n, observed: h.O, expected: h.E, OE: h.OE, z: h.z,
+      volume: h.n, observed: h.O, expected: h.E, OE: h.OE, z: h.z, z_disesuaikan: h.z_od ?? null, prioritas: "P" + kelasPrioritas(h),
       angka_mentah_pct: h.rate, selisih_kejadian: h.selisih,
       selisih_rupiah_sampel: h.rupiah, selisih_rupiah_tertimbang: h.rupiah_tertimbang,
       penyumbang_terbesar: h.kontributor,
