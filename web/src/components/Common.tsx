@@ -11,6 +11,11 @@ export function onEnter(fn: () => void) {
 }
 
 /** Tombol chip filter yang konsisten & keyboard-accessible (dipakai semua toolbar). */
+/** Skor z dua desimal; ditebalkan bila di atas ambang 1,96. */
+export function ZTeks({ z }: { z: number | null | undefined }) {
+  return <span className={z != null && z > 1.96 ? 'zsig' : undefined}>{num(z, 2)}</span>
+}
+
 export function Chip({ aktif, onClick, judul, children }: { aktif?: boolean; onClick: () => void; judul?: string; children: ReactNode }) {
   return <button type="button" className={'chip' + (aktif ? ' on' : '')} aria-pressed={!!aktif} title={judul} onClick={onClick}>{children}</button>
 }

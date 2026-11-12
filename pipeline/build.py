@@ -267,6 +267,7 @@ for T in (T_fr, T_fr_sebelum):
     T["rupiah_tertimbang"] = T.rupiah * T.bobot
 T_fr["rate_sebelum_putih"] = T_fr_sebelum.rate.reindex(T_fr.index)
 T_fr["OE_sebelum_putih"] = T_fr_sebelum.OE.reindex(T_fr.index)
+T_fr["z_sebelum_putih"] = T_fr_sebelum.z.reindex(T_fr.index)
 T_fr["pangsa_putih"] = d_fr_semua.groupby("faskes").putih.mean().reindex(T_fr.index)
 MET["fragmentasi"] = {"n_kunjungan": int(len(rj)), "rate_nasional_7hr": round(float(rj.y.mean()) * 100, 1),
                       "pangsa_putih_nasional": round(float(rj.putih.mean()) * 100, 1),
@@ -379,13 +380,14 @@ def baris(T, fk, ekstra=()):
     o = {"n": int(r.n), "O": int(r.O), "E": round(float(r.E), 1),
          "OE": round(float(r.OE), 3) if pd.notna(r.OE) else None,
          "z": round(float(r.z), 2) if pd.notna(r.z) else None,
+         "V": round(float(r.V), 2) if pd.notna(r.V) else None,
          "rate": round(float(r.rate) * 100, 1), "status": str(r.status), "stabil": bool(r.stabil),
          "selisih": round(float(r.selisih), 1), "rupiah": round(float(r.rupiah)),
          "rupiah_tertimbang": round(float(r.rupiah_tertimbang)),
          "kontributor": r.kontributor if isinstance(r.kontributor, list) else []}
     for e in ekstra:
         v = r[e]
-        o[e] = None if pd.isna(v) else round(float(v) * (100 if e in ("pangsa_nonspes", "pangsa_putih", "rate_sebelum_putih") else 1), 3 if e == "OE_sebelum_putih" else 1)
+        o[e] = None if pd.isna(v) else round(float(v) * (100 if e in ("pangsa_nonspes", "pangsa_putih", "rate_sebelum_putih") else 1), 3 if e == "OE_sebelum_putih" else 2 if e == "z_sebelum_putih" else 1)
     return o
 
 
@@ -395,7 +397,7 @@ for fkid, p in prof[prof.prov == PROV].iterrows():
     m = {}
     if fkid in T_re.index: m["readmisi"] = baris(T_re, fkid)
     if fkid in T_sv.index: m["severity"] = baris(T_sv, fkid)
-    if fkid in T_fr.index: m["fragmentasi"] = baris(T_fr, fkid, ("rate_sebelum_putih", "OE_sebelum_putih", "pangsa_putih"))
+    if fkid in T_fr.index: m["fragmentasi"] = baris(T_fr, fkid, ("rate_sebelum_putih", "OE_sebelum_putih", "z_sebelum_putih", "pangsa_putih"))
     if not m:
         continue
     rp = sum(v["rupiah"] for v in m.values() if v["status"] in ("perhatian", "diamati"))

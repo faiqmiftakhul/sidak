@@ -20,10 +20,10 @@ export const STATUS: Record<Status, { label: string; warna: string; bg: string }
 
 export interface Kontrib { nama: string; O: number; E: number; n: number }
 export interface Hasil {
-  n: number; O: number; E: number; OE: number | null; z: number | null; rate: number
+  n: number; O: number; E: number; OE: number | null; z: number | null; V?: number | null; rate: number
   status: Status; stabil: boolean; selisih: number; rupiah: number; rupiah_tertimbang: number
   kontributor: Kontrib[]
-  pangsa_nonspes?: number | null; rate_sebelum_putih?: number | null; OE_sebelum_putih?: number | null; pangsa_putih?: number | null
+  pangsa_nonspes?: number | null; rate_sebelum_putih?: number | null; OE_sebelum_putih?: number | null; z_sebelum_putih?: number | null; pangsa_putih?: number | null
 }
 export interface Bulan { bln: number; O: number; E: number; n: number; OE?: number | null }
 export interface Faskes {

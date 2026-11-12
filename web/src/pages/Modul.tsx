@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
-import { Chip, Pager, Peringkat, Pilih, Tren } from '../components/Common'
+import { mdiSigma } from '@mdi/js'
+import { Chip, Pager, Peringkat, Pilih, Tren, ZTeks } from '../components/Common'
 import KpiCard from '../components/KpiCard'
 import { OEChip, Progres, RupiahText, Spark, StatusPill } from '../components/sig'
 import { Sparkle } from '../components/Sparkle'
@@ -42,7 +43,7 @@ const DEF: Record<Modul, { apa: string; kejadian: string; wajar: string; putih: 
 export default function ModulPage() {
   const { m: mm } = useParams()
   const m = (mm ?? 'readmisi') as Modul
-  const { faskes, ring } = useData()
+  const { faskes, ring, kab } = useData()
   const { buka } = useAi()
   const [sp, setSP] = useSearchParams()
   const wil = (sp.get('wil') === 'jateng' ? 'jateng' : 'semarang') as 'semarang' | 'jateng'
@@ -51,6 +52,7 @@ export default function ModulPage() {
   const patch = (k: string, v: string | null) => { const n = new URLSearchParams(sp); if (v == null || v === '') n.delete(k); else n.set(k, v); setSP(n, { replace: true }) }
 
   const info = INFO[m], def = DEF[m], p = ring.per_modul[m]
+  const zKota = kab[KOTA]?.[m]?.z ?? null
   const rows = faskes.filter(f => f.modul[m] && (wil === 'jateng' || f.kab === KOTA) && f.modul[m]!.status !== 'volume_rendah')
   const urut = [...rows].sort((a, b) => (nilai === 'rupiah' ? b.modul[m]!.rupiah - a.modul[m]!.rupiah : nilai === 'rate' ? b.modul[m]!.rate - a.modul[m]!.rate : (b.modul[m]!.OE ?? 0) - (a.modul[m]!.OE ?? 0)))
   const chartRows = urut.slice(0, wil === 'jateng' ? 25 : 30)
@@ -59,7 +61,7 @@ export default function ModulPage() {
   useEffect(() => setPage(1), [wil, nilai, putih, m])
   const tTable = urut.slice((page - 1) * per, page * per)
   const sebelum = m === 'fragmentasi' && !putih
-  const scatter = rows.map(f => { const h = f.modul[m]!; return { x: h.n, y: sebelum ? (h.OE_sebelum_putih ?? h.OE) : h.OE, z: 1, nama: f.label, status: h.status, kelas: f.kelas_pendek, id: f.id } }).filter(r => r.y != null)
+  const scatter = rows.map(f => { const h = f.modul[m]!; return { x: h.n, y: sebelum ? (h.OE_sebelum_putih ?? h.OE) : h.OE, zv: sebelum ? (h.z_sebelum_putih ?? null) : h.z, z: 1, nama: f.label, status: h.status, kelas: f.kelas_pendek, id: f.id } }).filter(r => r.y != null)
 
   const [versi, setVersi] = useState(0)
   const audit = useMemo(() => { void versi; return bacaStatusAudit() }, [versi])
@@ -81,10 +83,11 @@ export default function ModulPage() {
         </div>
       </details>
 
-      <div className="grid4">
+      <div className="grid5">
         <KpiCard role="coverage" label={`${info.unit} dinilai di Semarang`} value={p.n_cukup} href={'/antrean?mod=' + m} hint={<>dari {p.n_faskes}; minimum {ring.min_n[m]} {m === 'rujukan' ? 'kunjungan sakit' : m === 'fragmentasi' ? 'kunjungan RJTL' : 'rawat inap'}</>} />
         <KpiCard role="attention" label="Perlu perhatian" value={p.n_perhatian} href={'/antrean?st=perhatian&mod=' + m} hint={<>{p.n_diamati} diamati{m === 'fragmentasi' && p.n_diputihkan != null ? ` · ${p.n_diputihkan} wajar setelah daftar putih` : ''}</>} />
         <KpiCard role="ratio" label="O/E kota" value={oe(p.E > 0 ? p.O / p.E : null)} oe={p.E > 0 ? p.O / p.E : null} statusPill sparkline={(ring.tren[m] ?? []).map(b => b.E > 0 ? b.O / b.E : null).filter((x): x is number => x != null)} hint={<>{num(p.O)} kejadian vs {num(p.E, 1)} wajar</>} />
+        <KpiCard role={zKota != null && zKota > 1.96 ? 'attention' : 'neutral'} icon={mdiSigma} label="Skor z kota" value={num(zKota, 2)} hint={zKota == null ? 'tidak dapat dihitung' : zKota > 1.96 ? 'di atas 1,96: kelebihan kejadian kecil kemungkinan kebetulan' : 'di bawah 1,96: selisih masih dalam batas kebetulan'} />
         <KpiCard role="money" label="Selisih rupiah" value={rp(p.rupiah)} href={'/antrean?mod=' + m} hint={<>sampel · ≈ {rp(p.rupiah_tertimbang)} tertimbang</>} />
       </div>
 
@@ -112,7 +115,7 @@ export default function ModulPage() {
               <XAxis dataKey="x" type="number" name="Volume" tick={{ fontSize: 11 }} scale="log" domain={['auto', 'auto']} allowDataOverflow />
               <YAxis dataKey="y" type="number" name="O/E" tick={{ fontSize: 11 }} domain={[0, 'auto']} />
               <ZAxis dataKey="z" range={[50, 50]} />
-              <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => { const d = payload?.[0]?.payload; return d ? <div className="card" style={{ padding: 8, fontSize: 12 }}><b>{d.nama}</b> · {d.kelas}<br />volume {num(d.x)} · O/E {oe(d.y)}<br /><StatusPill s={d.status} /></div> : null }} />
+              <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => { const d = payload?.[0]?.payload; return d ? <div className="card" style={{ padding: 8, fontSize: 12 }}><b>{d.nama}</b> · {d.kelas}<br />volume {num(d.x)} · O/E {oe(d.y)}{d.zv != null ? ` · z ${num(d.zv, 2)}` : ''}<br /><StatusPill s={d.status} /></div> : null }} />
               <Scatter data={scatter} isAnimationActive={false} shape={(pr: any) => <circle cx={pr.cx} cy={pr.cy} r={6} fill={STATUS[pr.payload.status as keyof typeof STATUS].warna} stroke="#fff" />} />
             </ScatterChart>
           </ResponsiveContainer>
@@ -139,9 +142,9 @@ export default function ModulPage() {
           <h3>Sebelum dan sesudah daftar putih klinis (Kota Semarang)</h3>
           <div className="twrap">
             <table className="t">
-              <thead><tr><th>RS</th><th>Kelas</th><th className="num">Pangsa pola klinis wajar</th><th className="num">Angka sebelum</th><th className="num">O/E sebelum</th><th className="num">Angka sesudah</th><th className="num">O/E sesudah</th><th>Status</th></tr></thead>
+              <thead><tr><th>RS</th><th>Kelas</th><th className="num">Pangsa pola klinis wajar</th><th className="num">Angka sebelum</th><th className="num">O/E sebelum</th><th className="num">{TH_Z} sebelum</th><th className="num">Angka sesudah</th><th className="num">O/E sesudah</th><th className="num">{TH_Z} sesudah</th><th>Status</th></tr></thead>
               <tbody>{faskes.filter(f => f.kab === KOTA && f.modul.fragmentasi && f.modul.fragmentasi.status !== 'volume_rendah').sort((a, b) => (b.modul.fragmentasi!.OE_sebelum_putih ?? 0) - (a.modul.fragmentasi!.OE_sebelum_putih ?? 0)).map(f => { const h = f.modul.fragmentasi!; const memutih = (h.OE_sebelum_putih ?? 0) > 1.05 && h.status === 'wajar'; return (
-                <tr key={f.id} className={memutih ? 'memutih' : undefined}><td><Link to={'/faskes/' + f.id}>{f.label}</Link></td><td>{f.kelas_pendek}</td><td className="num">{pct(h.pangsa_putih)}</td><td className="num">{pct(h.rate_sebelum_putih)}</td><td className="num">{oe(h.OE_sebelum_putih)}</td><td className="num">{pct(h.rate)}</td><td className="num"><b>{oe(h.OE)}</b></td><td><StatusPill s={h.status} />{memutih && <span className="hint"> wajar</span>}</td></tr>) })}</tbody>
+                <tr key={f.id} className={memutih ? 'memutih' : undefined}><td><Link to={'/faskes/' + f.id}>{f.label}</Link></td><td>{f.kelas_pendek}</td><td className="num">{pct(h.pangsa_putih)}</td><td className="num">{pct(h.rate_sebelum_putih)}</td><td className="num">{oe(h.OE_sebelum_putih)}</td><td className="num"><ZTeks z={h.z_sebelum_putih} /></td><td className="num">{pct(h.rate)}</td><td className="num"><b>{oe(h.OE)}</b></td><td className="num"><ZTeks z={h.z} /></td><td><StatusPill s={h.status} />{memutih && <span className="hint"> wajar</span>}</td></tr>) })}</tbody>
             </table>
           </div>
         </div>
@@ -153,8 +156,8 @@ export default function ModulPage() {
             {ring.metrik.rujukan.top_dx_rujukan_semarang.map((d: any) => <div key={d.dx} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 50px', gap: 8, alignItems: 'center', fontSize: 12, marginBottom: 4 }}><span className="mono">{d.dx}</span><div className="bar"><div style={{ width: (d.n / ring.metrik.rujukan.top_dx_rujukan_semarang[0].n) * 100 + '%', background: 'var(--brand)' }} /></div><span className="num">{num(d.n)}</span></div>)}
             <div className="hint">Nasional: rasio rujuk {pct(ring.metrik.rujukan.rasio_rujuk_nasional)}; {pct(ring.metrik.rujukan.pangsa_nonspes_nasional)} rujukan berdiagnosis non-spesialistik ({ring.metrik.rujukan.n_diagnosis_nonspes} kode).</div></div>
           <div className="card"><h3>Puskesmas vs klinik vs dokter praktik (Semarang)</h3>
-            <div className="twrap"><table className="t"><thead><tr><th>Jenis</th><th className="num">FKTP dinilai</th><th className="num">Rasio rujuk</th><th className="num">O/E</th><th className="num">Perlu perhatian</th></tr></thead>
-              <tbody>{Array.from(new Set(rows.filter(f => f.kab === KOTA).map(f => f.kelas_pendek))).map(j => { const g = rows.filter(f => f.kab === KOTA && f.kelas_pendek === j); const O = g.reduce((s, f) => s + f.modul.rujukan!.O, 0), E = g.reduce((s, f) => s + f.modul.rujukan!.E, 0), n = g.reduce((s, f) => s + f.modul.rujukan!.n, 0); return <tr key={j}><td>{j}</td><td className="num">{g.length}</td><td className="num">{pct(n ? (O / n) * 100 : null)}</td><td className="num">{oe(E ? O / E : null)}</td><td className="num">{g.filter(f => f.modul.rujukan!.status === 'perhatian').length}</td></tr> })}</tbody></table></div></div>
+            <div className="twrap"><table className="t"><thead><tr><th>Jenis</th><th className="num">FKTP dinilai</th><th className="num">Rasio rujuk</th><th className="num">O/E</th><th className="num">{TH_Z}</th><th className="num">Perlu perhatian</th></tr></thead>
+              <tbody>{Array.from(new Set(rows.filter(f => f.kab === KOTA).map(f => f.kelas_pendek))).map(j => { const g = rows.filter(f => f.kab === KOTA && f.kelas_pendek === j); const O = g.reduce((s, f) => s + f.modul.rujukan!.O, 0), E = g.reduce((s, f) => s + f.modul.rujukan!.E, 0), n = g.reduce((s, f) => s + f.modul.rujukan!.n, 0), V = g.reduce((s, f) => s + (f.modul.rujukan!.V ?? 0), 0); return <tr key={j}><td>{j}</td><td className="num">{g.length}</td><td className="num">{pct(n ? (O / n) * 100 : null)}</td><td className="num">{oe(E ? O / E : null)}</td><td className="num"><ZTeks z={V > 0 ? (O - E) / Math.sqrt(V) : null} /></td><td className="num">{g.filter(f => f.modul.rujukan!.status === 'perhatian').length}</td></tr> })}</tbody></table></div></div>
         </div>
       )}
 
@@ -171,8 +174,8 @@ export default function ModulPage() {
       <div className="card" style={{ padding: 0 }}>
         <div className="table-scroll">
           <table className="t">
-            <thead><tr><th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Kelas</th><th className="num">Volume</th><th className="num">O/E (z)</th><th>Tren 6 bln</th><th className="num">≈ Selisih tbg</th><th>Status</th><th>Progres</th></tr></thead>
-            <tbody>{tTable.map((f: Faskes) => { const h = f.modul[m]!; return <tr key={f.id} className={'tr-' + h.status}><td><Link to={'/faskes/' + f.id}><b>{f.label}</b></Link></td>{wil === 'jateng' && <td>{f.kab}</td>}<td>{f.kelas_pendek}</td><td className="num">{num(h.n)}</td><td className="num"><OEChip v={h.OE} z={h.z} n={h.n} st={h.status} /></td><td><Spark rows={f.bulanan[m] ?? []} /></td><td className="num"><RupiahText v={h.rupiah_tertimbang} /></td><td><StatusPill s={h.status} /></td><td><Progres nilai={audit[f.id] ?? 'belum'} fb={s => { simpanStatusAudit(f.id, s); setVersi(v => v + 1) }} /></td></tr> })}</tbody>
+            <thead><tr><th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Kelas</th><th className="num">Volume</th><th className="num">O/E</th><th className="num">{TH_Z}</th><th>Tren 6 bln</th><th className="num">≈ Selisih tbg</th><th>Status</th><th>Progres</th></tr></thead>
+            <tbody>{tTable.map((f: Faskes) => { const h = f.modul[m]!; return <tr key={f.id} className={'tr-' + h.status}><td><Link to={'/faskes/' + f.id}><b>{f.label}</b></Link></td>{wil === 'jateng' && <td>{f.kab}</td>}<td>{f.kelas_pendek}</td><td className="num">{num(h.n)}</td><td className="num"><OEChip v={h.OE} n={h.n} st={h.status} /></td><td className="num"><ZTeks z={h.z} /></td><td><Spark rows={f.bulanan[m] ?? []} /></td><td className="num"><RupiahText v={h.rupiah_tertimbang} /></td><td><StatusPill s={h.status} /></td><td><Progres nilai={audit[f.id] ?? 'belum'} fb={s => { simpanStatusAudit(f.id, s); setVersi(v => v + 1) }} /></td></tr> })}</tbody>
           </table>
         </div>
         {tTable.length > 0 && <Pager total={urut.length} page={page} per={per} ubah={setPage} ubahPer={p => { setPer(p); setPage(1) }} />}
@@ -180,6 +183,8 @@ export default function ModulPage() {
     </>
   )
 }
+
+const TH_Z = <span title="Seberapa jauh selisih O−E dari kebetulan; di atas 1,96 kecil kemungkinan hanya kebetulan">Skor z</span>
 
 function PenjelasanLengkap({ info }: { info: (typeof INFO)[Modul] }) {
   return <div className="hint" style={{ marginTop: 8 }}>Pembatas ambang dan daftar putih dirinci di halaman <Link to="/metodologi">Metodologi</Link>. O/E dan z dihitung terhadap Expected berbasis rekan sebaya, bukan "normal" tunggal.</div>
