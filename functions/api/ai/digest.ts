@@ -75,7 +75,7 @@ async function digestDeterministik(scope: string): Promise<unknown[]> {
     ins.push({
       id: "modul-teratas", module: top.m, scope: wil,
       text: `Dampak terbesar kini dari modul #${NOMOR[top.m]} ${NAMA[top.m]}.`,
-      isi: `Menyumbang ${rp(top.tbg)} dari selisih tertimbang ${lwil} — prioritas tertinggi untuk audit.`,
+      isi: `Menyumbang ${rp(top.tbg)} dari selisih tertimbang ${lwil}, prioritas tertinggi untuk audit.`,
       link: "/modul/" + top.m,
     })
   }
@@ -83,8 +83,8 @@ async function digestDeterministik(scope: string): Promise<unknown[]> {
     const { f, k, h } = best
     ins.push({
       id: "faskes-teratas", module: k, scope: wil,
-      text: `${f.label} mencatat O/E ${String(Math.round(h.OE * 100) / 100).replace(".", ",")} pada modul #${NOMOR[k]} — tertinggi di antara faskes perlu perhatian.`,
-      isi: `Selisih tertimbang ${rp(h.rupiah_tertimbang)} — kandidat pertama untuk verifikasi klaim.`,
+      text: `${f.label} mencatat selisih tertimbang terbesar di antara faskes perlu perhatian, pada modul #${NOMOR[k]}.`,
+      isi: `${rp(h.rupiah_tertimbang)} · O/E ${String(Math.round(h.OE * 100) / 100).replace(".", ",")}. Kandidat pertama untuk verifikasi klaim.`,
       link: "/faskes/" + f.id,
     })
   }

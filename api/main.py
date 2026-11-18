@@ -611,7 +611,8 @@ def buat_model():
 
 def komposisi(model, msgs):
     """Balasan final: satu panggilan, tanpa tools, mengikuti kontrak JSON."""
-    resp = model.chat.completions.create(model=MODEL, max_tokens=2000, messages=msgs)
+    resp = model.chat.completions.create(model=MODEL, max_tokens=2000,
+                                         messages=[{"role": "system", "content": SYSTEM}] + list(msgs))
     out = ekstrak_json(resp.choices[0].message.content or "")
     if not out.get("teks"):
         raise RuntimeError("komposisi kosong")
@@ -743,13 +744,13 @@ def digest_deterministik(scope):
     if top and top["tbg"] > 0:
         ins.append({"id": "modul-teratas", "module": top["m"], "scope": wil,
                     "text": "Dampak terbesar kini dari modul #%d %s." % (NOMOR[top["m"]], NAMA[top["m"]]),
-                    "isi": "Menyumbang %s dari selisih tertimbang %s — prioritas tertinggi untuk audit." % (rp(top["tbg"]), lwil),
+                    "isi": "Menyumbang %s dari selisih tertimbang %s, prioritas tertinggi untuk audit." % (rp(top["tbg"]), lwil),
                     "link": "/modul/" + top["m"]})
     if best_f:
         f, k, h = best_f
         ins.append({"id": "faskes-teratas", "module": k, "scope": wil,
-                    "text": "%s mencatat O/E %s pada modul #%d — tertinggi di antara faskes perlu perhatian." % (f["label"], str(round(h["OE"], 2)).replace(".", ","), NOMOR[k]),
-                    "isi": "Selisih tertimbang %s — kandidat pertama untuk verifikasi klaim." % rp(h["rupiah_tertimbang"]),
+                    "text": "%s mencatat selisih tertimbang terbesar di antara faskes perlu perhatian, pada modul #%d." % (f["label"], NOMOR[k]),
+                    "isi": "%s · O/E %s. Kandidat pertama untuk verifikasi klaim." % (rp(h["rupiah_tertimbang"]), str(round(h["OE"], 2)).replace(".", ",")),
                     "link": "/faskes/" + f["id"]})
     if len(fs):
         ins.append({"id": "cakupan", "module": "all", "scope": wil,
@@ -844,8 +845,9 @@ def chat(req: Chat):
     if client is None:
         raise HTTPException(503, "SUMOPOD_API_KEY belum diatur")
     # SumoPod adalah OpenAI-compatible; gunakan id yang diketahui OpenAI.
+    # Peran dari klien dibatasi user/assistant: pesan "system" palsu tidak boleh menimpa SYSTEM.
     msgs = [{"role": m["role"], "content": str(m.get("content") or "")}
-            for m in req.messages if m.get("content")][-12:]
+            for m in req.messages if m.get("content") and m.get("role") in ("user", "assistant")][-12:]
     if req.halaman and msgs:
         msgs[-1] = {"role": "user", "content": msgs[-1]["content"] + f"\n\n(konteks: pengguna sedang membuka halaman {req.halaman})"}
     awal_teks = ambil_pertanyaan(msgs) or (msgs[0]["content"] if msgs else "")
@@ -871,6 +873,7 @@ def chat(req: Chat):
 
     # 2) Loop alat lama (workflow / pertanyaan yang belum dipetakan tetap berfungsi).
     TOOLS_OPENAI = [{"type": "function", "function": t} for t in TOOLS]
+    msgs = [{"role": "system", "content": SYSTEM}] + msgs
     iterasi = 0
     while iterasi < 5:
         iterasi += 1
@@ -933,10 +936,13 @@ if os.path.isdir(DIST):
     app.mount("/assets", StaticFiles(directory=os.path.join(DIST, "assets")), name="assets")
     app.mount("/data", StaticFiles(directory=os.path.join(DIST, "data")), name="data")
 
+    DIST_ASLI = os.path.realpath(DIST)
+
     @app.get("/{path:path}")
     def spa(path: str):
         """Aplikasi satu halaman: rute React dilayani index.html."""
-        p = os.path.join(DIST, path)
-        if path and os.path.isfile(p):
+        # os.path.join membuang DIST bila path absolut ("//etc/passwd"), jadi hasil akhir wajib tetap di dalam DIST.
+        p = os.path.realpath(os.path.join(DIST, path))
+        if path and p.startswith(DIST_ASLI + os.sep) and os.path.isfile(p):
             return FileResponse(p)
         return FileResponse(os.path.join(DIST, "index.html"))

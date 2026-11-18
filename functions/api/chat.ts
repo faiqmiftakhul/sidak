@@ -3,7 +3,7 @@
 // (tools OpenAI-compatible) dan jawaban tersimpan (cadangan) saat gagal.
 
 import { NOMOR, KOTA, inisialisasi, store, muatCadangan } from "../lib/data"
-import { buatClient, ekstrakJson, NASKH_PEKSTRAK, KEY, type Client } from "../lib/llm"
+import { buatClient, ekstrakJson, NASKH_PEKSTRAK, SYSTEM_PROMPT, KEY, type Client } from "../lib/llm"
 import { TOOLS, jalankanAlat } from "../lib/tools"
 
 const _g = globalThis as any
@@ -204,7 +204,7 @@ function pesanKomposisi(teks_q: string, slot: Record<string, any>, hasil: Array<
 }
 
 async function komposisi(model: Client, msgs: Array<Record<string, any>>): Promise<Record<string, any>> {
-  const resp = await model.chat.completions.create({ max_tokens: 2000, messages: msgs as any })
+  const resp = await model.chat.completions.create({ max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...msgs] as any })
   const out = ekstrakJson(resp.choices[0]?.message?.content ?? "")
   if (!out.teks) throw new Error("komposisi kosong")
   return out
@@ -298,8 +298,9 @@ export async function onRequest(context: { request: Request; env: Record<string,
     const body = (await request.json().catch(() => null)) as { messages?: Array<Record<string, any>>; halaman?: string } | null
     const raw = body?.messages
     if (!Array.isArray(raw)) return Response.json({ detail: "body.messages wajib array" }, { status: 400 })
+    // Peran dari klien dibatasi user/assistant: pesan "system" palsu tidak boleh menimpa SYSTEM_PROMPT.
     const msgs: Array<Record<string, any>> = raw
-      .filter(m => m && m.content)
+      .filter(m => m && m.content && (m.role === "user" || m.role === "assistant"))
       .map(m => ({ role: String(m.role ?? "user"), content: String(m.content ?? "") }))
       .slice(-12)
     if (body?.halaman && msgs.length) {
@@ -322,6 +323,7 @@ export async function onRequest(context: { request: Request; env: Record<string,
     if (hasil_slot) return Response.json(hasil_slot)
 
     const TOOLS_OPENAI = TOOLS.map(t => ({ type: "function", function: t }))
+    msgs.unshift({ role: "system", content: SYSTEM_PROMPT })
     const iter = async (): Promise<Response> => {
       for (let i = 0; i < max_iter; i++) {
         let resp

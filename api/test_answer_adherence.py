@@ -100,6 +100,7 @@ class ModelStub:
     def __init__(self, ekstraktor=None):
         self.ekstraktor = ekstraktor or main.slot_heuristik
         self.panggilan = []
+        self.sistem = []
 
     class _Res:
         class _Cho:
@@ -123,6 +124,7 @@ class ModelStub:
             msgs = kw.get("messages", [])
             sysc = [m["content"] for m in msgs if m["role"] == "system"]
             self.stub.panggilan.append(kw.get("messages", [])[-1]["content"][:60])
+            self.stub.sistem.append(sysc)
             if sysc and "Ekstrak slot" in sysc[0]:
                 teks = sysc[0].split("Pertanyaan: ", 1)[-1]
                 return ModelStub._Res(json.dumps(self.stub.ekstraktor(teks), ensure_ascii=False))
@@ -244,11 +246,29 @@ def uji_luring(cetak=True):
     out = main.jalankan_pipeline([{"role": "user", "content": "yang paling bermasalah apa"}], "/", klar)
     assert "klarifikasi" in out["teks"] and not out["tautan"], "T7: clarify → Template F"
 
+    # T8 - konstitusi SYSTEM ikut di setiap panggilan komposisi
+    main.KACHE_JAWABAN.clear()
+    stub = ModelStub()
+    main.jalankan_pipeline([{"role": "user", "content": PERTANYAAN["Q1"]}], "/", stub)
+    komposisi_sys = [s for s in stub.sistem if not (s and "Ekstrak slot" in s[0])]
+    assert komposisi_sys and all(s and s[0] == main.SYSTEM for s in komposisi_sys), "T8: SYSTEM tidak terkirim ke komposisi"
+
+    # T9 - kartu faskes-teratas dipilih menurut rupiah, jadi tidak boleh mengklaim O/E tertinggi
+    kartu = next(c for c in main.digest_deterministik("semarang") if c["id"] == "faskes-teratas")
+    assert "selisih tertimbang terbesar" in kartu["text"] and "O/E" not in kartu["text"], "T9: %s" % kartu["text"]
+    assert "—" not in kartu["text"] + (kartu["isi"] or ""), "T9: em dash di kartu digest"
+
+    # T10 - SPA tidak menyajikan berkas di luar web/dist
+    if hasattr(main, "spa"):
+        for jalur in ("/etc/passwd", "../api/main.py", "%2e%2e/api/main.py"):
+            r = main.spa(jalur)
+            assert os.path.basename(r.path) == "index.html", "T10: traversal lolos untuk %r -> %s" % (jalur, r.path)
+
     if cetak:
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T7 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T10 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):
