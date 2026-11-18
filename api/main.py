@@ -498,7 +498,7 @@ _SLUG = {str(v): k for k, v in NOMOR.items()}
 TEMPLATE = {"A": "Saya hanya membahas data klaim dan alur audit SIDAK.",
             "B": "Data pasien tidak tersedia — SIDAK hanya memuat data klaim yang telah dianonimkan.",
             "C": "Itu di luar wewenang saya — SIDAK menampilkan indikasi statistik; keputusan akhir melalui audit medis.",
-            "D": "Pertanyaan itu di luar cakupan SIDAK. Saya bisa membantu soal data klaim, modul, atau antrean audit.",
+            "D": "Itu di luar yang bisa saya bantu. Saya hanya menjawab dari data klaim SIDAK, misalnya faskes yang perlu perhatian, estimasi selisih rupiah, atau tren tiap modul.",
             "E": "Data itu tidak tersedia dalam sampel saat ini.",
             "F": "Agar jawaban tepat, saya perlu satu klarifikasi: %s"}
 _REFUSAL_SLOT = {"luar_cakupan": "D", "rahasia": "A", "injection": "A", "pasien": "B", "vonis": "C"}
@@ -790,6 +790,49 @@ def _tokens(s):
 _CADANGAN = None
 
 
+# Percakapan ringan dijawab tanpa LLM: cepat, dan tidak bisa dipakai untuk membelokkan model.
+_PERCAKAPAN = [
+    (re.compile(r"^(hai+|halo+|hallo|helo|hello|hi+|hey|hei|pagi|siang|sore|malam|selamat (pagi|siang|sore|malam)|"
+                r"assalamu.?alaikum( wr wb)?|permisi)( (sidak|tanya sidak|min|kak|semua))?$"),
+     "Halo, saya Tanya SIDAK. Saya membantu membaca data klaim di SIDAK: faskes yang perlu perhatian, "
+     "estimasi selisih rupiah, tren tiap modul, dan cara membaca O/E. Silakan tanyakan salah satunya, atau pilih contoh di bawah."),
+    (re.compile(r"^(terima ?kasih|makasih|trims|thanks?|thank you|thx|tq|mantap|oke|ok|okay|sip|siap|baik)( (ya|banyak|sidak|min|kak))*$"),
+     "Sama-sama. Kalau ada data klaim lain yang ingin dicek, tanyakan saja."),
+    (re.compile(r"^((kamu|anda) siapa|siapa (kamu|anda)|(kamu|anda) bisa apa( saja| aja)?|bisa (bantu )?apa( saja| aja)?|"
+                r"apa yang bisa (kamu|anda) (bantu|lakukan)|bantuan|help|cara (pakai|menggunakan)( sidak)?|fiturnya apa( saja)?)$"),
+     "Saya Tanya SIDAK, asisten untuk data klaim di aplikasi ini. Yang bisa saya bantu: menunjukkan faskes yang perlu perhatian, "
+     "menghitung estimasi selisih rupiah, menjelaskan kenapa sebuah faskes ditandai, menampilkan tren bulanan tiap modul, "
+     "dan menjelaskan cara membaca O/E serta skor z. Yang tidak bisa: menilai dokter atau pasien, memastikan ada kecurangan, "
+     "dan menjawab di luar data klaim SIDAK."),
+]
+
+
+_HITUNGAN = re.compile(r"^(?=.*\d\s*[+\-*/x×:^]\s*\d)[\d\s+\-*/x×:^().,=]+(berapa|hasilnya|=)?\s*\??$")
+
+
+def _normal(teks):
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s/#-]", " ", (teks or "").lower())).strip()
+
+
+def jawab_cepat(teks):
+    """Jawaban tanpa LLM: percakapan ringan, atau pertanyaan yang persis sama dengan jawaban tersimpan (chip saran)."""
+    n = _normal(teks)
+    if not n:
+        return None
+    for pola, isi in _PERCAKAPAN:
+        if pola.match(n):
+            return {"teks": isi, "angka": [], "tautan": [], "alat": [], "cepat": True}
+    if _HITUNGAN.match((teks or "").strip().lower()):
+        return {"teks": TEMPLATE["D"], "angka": [], "tautan": [], "alat": [], "cepat": True}
+    cari_cadangan("")
+    for c in _CADANGAN or []:
+        if _normal(c["tanya"]) == n:
+            j = dict(c["jawab"]); j.setdefault("angka", []); j.setdefault("tautan", [])
+            j.update(alat=[], cepat=True)
+            return j
+    return None
+
+
 def cari_cadangan(teks):
     """Pencocokan kata kunci ke jawaban tersimpan (mode luring), serupa di frontend."""
     global _CADANGAN
@@ -948,6 +991,11 @@ def digest(scope: str = "KOTA SEMARANG"):
 
 @app.post("/api/chat")
 def chat(req: Chat):
+    pertama = ambil_pertanyaan([{"role": m.get("role"), "content": m.get("content")} for m in req.messages
+                                if m.get("role") in ("user", "assistant")])
+    cepat = jawab_cepat(pertama)
+    if cepat:
+        return cepat
     if not os.environ.get("SUMOPOD_API_KEY"):
         raise HTTPException(503, "SUMOPOD_API_KEY belum diatur")
     try:

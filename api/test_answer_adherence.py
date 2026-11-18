@@ -303,6 +303,17 @@ def uji_luring(cetak=True):
     assert out.get("ditahan") and "24.500.279" not in out["teks"] and out["tautan"], "T13: angka salah tetap tampil: %r" % out
     assert not main.KACHE_JAWABAN, "T13: jawaban ditahan ikut di-cache"
 
+    # T14 - percakapan ringan & chip saran dijawab tanpa LLM; pertanyaan data tetap ke pipeline
+    assert main.jawab_cepat("hai")["teks"].startswith("Halo, saya Tanya SIDAK")
+    assert main.jawab_cepat("Terima kasih ya!")["teks"].startswith("Sama-sama")
+    assert "Yang tidak bisa" in main.jawab_cepat("kamu bisa apa?")["teks"]
+    assert main.jawab_cepat("1+1 berapa?")["teks"] == main.TEMPLATE["D"]
+    for q in ("hai, RS mana yang paling perlu diperhatikan?", "2024", "Kenapa RS-31595 ditandai?"):
+        assert main.jawab_cepat(q) is None, "T14: %r tidak boleh dijawab cepat" % q
+    chip = main.jawab_cepat("RS mana yang paling perlu diperhatikan di Semarang dan berapa rupiahnya?")
+    assert chip and "RS-31595" in chip["teks"] and not chip.get("cadangan"), "T14: chip saran harus dari jawaban tersimpan"
+    assert "—" not in "".join(t for _, t in main._PERCAKAPAN) + main.TEMPLATE["D"], "T14: em dash di copy"
+
     # T10 - SPA tidak menyajikan berkas di luar web/dist
     if hasattr(main, "spa"):
         for jalur in ("/etc/passwd", "../api/main.py", "%2e%2e/api/main.py"):
@@ -313,7 +324,7 @@ def uji_luring(cetak=True):
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T13 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T14 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):

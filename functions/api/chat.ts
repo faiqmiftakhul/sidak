@@ -13,7 +13,7 @@ const TEMPLATE: Record<string, string> = {
   A: "Saya hanya membahas data klaim dan alur audit SIDAK.",
   B: "Data pasien tidak tersedia — SIDAK hanya memuat data klaim yang telah dianonimkan.",
   C: "Itu di luar wewenang saya — SIDAK menampilkan indikasi statistik; keputusan akhir melalui audit medis.",
-  D: "Pertanyaan itu di luar cakupan SIDAK. Saya bisa membantu soal data klaim, modul, atau antrean audit.",
+  D: "Itu di luar yang bisa saya bantu. Saya hanya menjawab dari data klaim SIDAK, misalnya faskes yang perlu perhatian, estimasi selisih rupiah, atau tren tiap modul.",
   E: "Data itu tidak tersedia dalam sampel saat ini.",
   F: "Agar jawaban tepat, saya perlu satu klarifikasi: %s",
   G: "SIDAK tidak menilai individu (dokter, tenaga kesehatan, atau pasien) — analisis hanya sampai tingkat faskes, sebagai indikasi untuk audit.",
@@ -24,6 +24,31 @@ const RE_VONIS = /\b(apakah|benarkah|pasti|terbukti)\b.*\b(fraud|curang|kecurang
 const REFUSAL_SLOT: Record<string, string> = { luar_cakupan: "D", rahasia: "A", injection: "A", pasien: "B", vonis: "C" }
 const SLUG: Record<string, string> = {}
 for (const [k, v] of Object.entries(NOMOR)) SLUG[String(v)] = k
+
+// Percakapan ringan dijawab tanpa LLM: cepat, dan tidak bisa dipakai untuk membelokkan model.
+const PERCAKAPAN: Array<[RegExp, string]> = [
+  [/^(hai+|halo+|hallo|helo|hello|hi+|hey|hei|pagi|siang|sore|malam|selamat (pagi|siang|sore|malam)|assalamu.?alaikum( wr wb)?|permisi)( (sidak|tanya sidak|min|kak|semua))?$/,
+    "Halo, saya Tanya SIDAK. Saya membantu membaca data klaim di SIDAK: faskes yang perlu perhatian, estimasi selisih rupiah, tren tiap modul, dan cara membaca O/E. Silakan tanyakan salah satunya, atau pilih contoh di bawah."],
+  [/^(terima ?kasih|makasih|trims|thanks?|thank you|thx|tq|mantap|oke|ok|okay|sip|siap|baik)( (ya|banyak|sidak|min|kak))*$/,
+    "Sama-sama. Kalau ada data klaim lain yang ingin dicek, tanyakan saja."],
+  [/^((kamu|anda) siapa|siapa (kamu|anda)|(kamu|anda) bisa apa( saja| aja)?|bisa (bantu )?apa( saja| aja)?|apa yang bisa (kamu|anda) (bantu|lakukan)|bantuan|help|cara (pakai|menggunakan)( sidak)?|fiturnya apa( saja)?)$/,
+    "Saya Tanya SIDAK, asisten untuk data klaim di aplikasi ini. Yang bisa saya bantu: menunjukkan faskes yang perlu perhatian, menghitung estimasi selisih rupiah, menjelaskan kenapa sebuah faskes ditandai, menampilkan tren bulanan tiap modul, dan menjelaskan cara membaca O/E serta skor z. Yang tidak bisa: menilai dokter atau pasien, memastikan ada kecurangan, dan menjawab di luar data klaim SIDAK."],
+]
+const HITUNGAN = /^(?=.*\d\s*[+\-*/x×:^]\s*\d)[\d\s+\-*/x×:^().,=]+(berapa|hasilnya|=)?\s*\??$/
+const normal = (t: string): string => (t || "").toLowerCase().replace(/[^\p{L}\p{N}_\s/#-]/gu, " ").replace(/\s+/g, " ").trim()
+
+// Jawaban tanpa LLM: percakapan ringan, atau pertanyaan yang persis sama dengan jawaban tersimpan (chip saran).
+export async function jawabCepat(teks: string): Promise<Record<string, any> | null> {
+  const n = normal(teks)
+  if (!n) return null
+  for (const [pola, isi] of PERCAKAPAN) if (pola.test(n)) return { teks: isi, angka: [], tautan: [], alat: [], cepat: true }
+  if (HITUNGAN.test((teks || "").trim().toLowerCase())) return { teks: TEMPLATE.D, angka: [], tautan: [], alat: [], cepat: true }
+  let daftar: Array<{ tanya?: string; jawab?: Record<string, any> }> = []
+  try { daftar = await muatCadangan() } catch { daftar = [] }
+  const c = daftar.find(x => normal(String(x.tanya ?? "")) === n)
+  if (!c?.jawab) return null
+  return { angka: [], tautan: [], ...c.jawab, alat: [], cepat: true }
+}
 
 const max_iter = 5
 const KACHE_JAWABAN = new Map<string, { t: number; jawaban: Record<string, any> }>()
@@ -301,6 +326,11 @@ export async function onRequest(context: { request: Request; env: Record<string,
   _g.SUMODOP_BASE_URL = env.SUMODOP_BASE_URL
   _g.SIDAK_MODEL = env.SIDAK_MODEL
   inisialisasi(request, env)
+  const awal = (await request.clone().json().catch(() => null)) as { messages?: Array<Record<string, any>> } | null
+  if (Array.isArray(awal?.messages)) {
+    const cepat = await jawabCepat(ambilPertanyaan(awal!.messages.filter(m => m && (m.role === "user" || m.role === "assistant"))))
+    if (cepat) return Response.json(cepat)
+  }
   if (!KEY()) return Response.json({ detail: "SUMODOP_API_KEY belum diatur" }, { status: 503 })
   const model = buatClient()
   const S = await store()

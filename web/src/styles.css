@@ -176,7 +176,7 @@ h3 { font-size: var(--fs-md); line-height: 1.35; font-weight: 600; color: var(--
 .card.soft { background: var(--brand-tint); border-color: transparent; }
 
 /* ---- v1.7: kartu KPI semantik (tingkatan warna: chip → nilai → kartu tetap putih) ---- */
-.kpi-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid #E2E8F0; border-radius: 10px; background: var(--card); min-width: 0; }
+.kpi-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid #E2E8F0; border-radius: 10px; background: var(--card); min-width: 0; height: 100%; }
 .kpi-card .kpi-top { display: flex; align-items: center; gap: 8px; }
 .kpi-card .kpi-chip { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
 .kpi-card .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #475569; line-height: 1.3; }
@@ -184,13 +184,14 @@ h3 { font-size: var(--fs-md); line-height: 1.35; font-weight: 600; color: var(--
 .kpi-card .kpi-value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .kpi-card .kpi-delta { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; }
 .kpi-card .kpi-spark { align-self: flex-start; }
-.kpi-card .kpi-hint { font-size: 11px; color: var(--grey); margin-top: 2px; }
+/* Petunjuk menempel ke dasar kartu supaya baris kartu sejajar walau isinya beda tinggi. */
+.kpi-card .kpi-hint { font-size: 11px; color: var(--grey); margin-top: auto; padding-top: 2px; }
 .kpi-card.sm { gap: 5px; padding: 10px 12px; }
 .kpi-card.sm .kpi-chip { width: 24px; height: 24px; }
 .kpi-card.sm .kpi-label { font-size: 10px; }
 .kpi-card.sm .kpi-value { font-size: 18px; }
 .kpi-card.sm .kpi-hint { display: none; }
-a.kpi-card-link { display: block; text-decoration: none; color: inherit; border-radius: 10px; }
+a.kpi-card-link { display: block; height: 100%; text-decoration: none; color: inherit; border-radius: 10px; }
 a.kpi-card-link:hover .kpi-card, a.kpi-card-link:focus-visible .kpi-card { border-color: color-mix(in srgb, var(--kpi-hover, var(--brand)) 40%, #E2E8F0); }
 a.kpi-card-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
@@ -686,7 +687,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .bacaan-card.pk { border-left: 3px solid var(--amber); }
 .bacaan-card .bak { display: flex; flex-direction: column; gap: 6px; }
 .bacaan-card b { font-size: 13.5px; line-height: 1.4; color: var(--ink); font-weight: 600; }
-.bacaan-card a { font-size: 12px; color: var(--brand); font-weight: 600; }
+.bacaan-card a { font-size: 12px; color: var(--brand); font-weight: 600; margin-top: auto; }
 .bacaan-card a:hover { text-decoration: none; }
 .bacaan-yl { font-size: 11px; line-height: 1.45; color: var(--grey); }
 .bacaan-skel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); min-height: 96px; }
