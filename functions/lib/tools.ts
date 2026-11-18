@@ -185,7 +185,7 @@ const ringkasWilayah = async (a: Arg): Promise<Hasil> => {
   const { fs, wil } = await wilayahFaskes(wilayah)
   const per: Record<string, unknown> = {}
   for (const m of Object.keys(NOMOR)) {
-    const r = (await ambilIndikator({ modul: m, wilayah: wil })) as Record<string, unknown>
+    const r = (await ambilIndikator({ modul: m, wilayah })) as Record<string, unknown>
     per[m] = r["total"]
   }
   return {

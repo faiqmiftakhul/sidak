@@ -136,9 +136,18 @@ export async function wilayahFaskes(wilayah?: string): Promise<{ fs: Faskes[]; w
   if (w === "JATENG" || w === "JAWA TENGAH" || w === "PROVINSI") {
     return { fs: S.faskes, wil: "JAWA TENGAH" }
   }
-  const kab = Object.keys(S.kab).find(k => k === w || k.replace("KOTA ", "") === w.replace("KOTA ", ""))
+  const kabW = w.replace(/^(KABUPATEN|KAB\.?)\s+/, "")
+  // Nama persis didahulukan: "TEGAL" = Kabupaten Tegal, bukan Kota Tegal.
+  const kab = [kabW, w].find(k => k in S.kab) ?? Object.keys(S.kab).find(k => k.replace("KOTA ", "") === w.replace("KOTA ", ""))
   if (kab) return { fs: S.faskes.filter(f => f.kab === kab), wil: kab }
   return { fs: S.faskes.filter(f => f.kab === KOTA), wil: KOTA }
+}
+
+export async function labelWilayah(wil: string): Promise<string> {
+  const judul = (x: string) => x.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase())
+  if (wil === KOTA || wil === "JAWA TENGAH") return judul(wil)
+  const S = await store()
+  return wil in S.kab && !wil.startsWith("KOTA ") ? "Kabupaten " + judul(wil) : judul(wil)
 }
 
 export function ringkasFaskes(f: Faskes, m?: string | null): Record<string, unknown> {

@@ -1,18 +1,14 @@
 // Port 1:1 /api/ai/digest dari api/main.py → Cloudflare Pages Function.
 // LLM bila ada kunci; selalu ada fallback deterministik (sama persis antarmuka).
 
-import { NOMOR, NAMA, KOTA, rp, inisialisasi, store, wilayahFaskes } from "../../lib/data"
+import { NOMOR, NAMA, KOTA, rp, inisialisasi, store, wilayahFaskes, labelWilayah } from "../../lib/data"
 import { buatClient, ekstrakJson, NASKH_DIGEST, KEY, type Client } from "../../lib/llm"
 
 const _g = globalThis as any
 const KACHE_DIGEST = new Map<string, { generated_at: number; data_version: string; deterministik: boolean; insights: unknown[] }>()
 const DIGEST_MAX = 16
 
-const labelWilayah = (w: string): string => {
-  if (w === KOTA) return "Kota Semarang"
-  if (w === "JAWA TENGAH") return "Jawa Tengah"
-  return w.toLowerCase().split(" ").map(x => x.charAt(0).toUpperCase() + x.slice(1)).join(" ")
-}
+
 
 async function faktaDigest(scope: string): Promise<Record<string, unknown>> {
   const { fs, wil } = await wilayahFaskes(scope)
@@ -49,7 +45,7 @@ async function faktaDigest(scope: string): Promise<Record<string, unknown>> {
 
 async function digestDeterministik(scope: string): Promise<unknown[]> {
   const { fs, wil } = await wilayahFaskes(scope)
-  const lwil = labelWilayah(wil)
+  const lwil = await labelWilayah(wil)
   const total_tbg = fs.reduce((s, f) => s + f.rupiah_tertimbang, 0)
   const n_perhatian = fs.filter(f => Object.values(f.modul).some(h => h.status === "perhatian")).length
   const mods: Array<{ m: string; tbg: number; per: number; OE: number | null }> = []

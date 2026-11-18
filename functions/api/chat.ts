@@ -6,6 +6,7 @@ import { NOMOR, KOTA, inisialisasi, store, muatCadangan } from "../lib/data"
 import { buatClient, ekstrakJson, NASKH_PEKSTRAK, SYSTEM_PROMPT, KEY, type Client } from "../lib/llm"
 import { TOOLS, jalankanAlat } from "../lib/tools"
 import { kumpulkanAngka, periksaAngka, jawabanDitahan } from "../lib/periksa"
+import { jawabDeterministik } from "../lib/deterministik"
 
 const _g = globalThis as any
 
@@ -74,11 +75,25 @@ function slotDefault(halaman?: string): Record<string, any> {
   return s
 }
 
-export function slotHeuristik(teks: string, halaman?: string): Record<string, any> {
+const NAMA_MODUL: Array<[string, string]> = [["readmisi", "16"], ["fragmentasi", "9"], ["severity", "4"], ["upcoding", "4"], ["keparahan", "4"],
+  ["rujukan", "3"], ["merujuk", "3"], ["rujuk", "3"]]
+const NARASI = /\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|beda|perbedaan|rekomendasi|saran|sebaiknya)\b/
+const reKata = (x: string) => new RegExp("\\b" + x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b")
+
+// Kab/kota Jawa Tengah selain Kota Semarang yang disebut di pertanyaan (kunci S.kab), atau "JAWA TENGAH".
+function wilayahDisebut(t: string, kabKeys: string[]): string | null {
+  if (/jawa tengah|jateng|provinsi/.test(t)) return "JAWA TENGAH"
+  if (/\b(kabupaten|kab\.?) semarang\b/.test(t)) return "KABUPATEN SEMARANG"
+  for (const k of kabKeys) if (k.startsWith("KOTA ") && k !== KOTA && reKata(k.toLowerCase()).test(t)) return k
+  for (const k of kabKeys) if (!k.startsWith("KOTA ") && k !== "SEMARANG" && reKata(k.toLowerCase()).test(t)) return k
+  return null
+}
+
+export function slotHeuristik(teks: string, halaman?: string, kabKeys: string[] = []): Record<string, any> {
   const t = (teks || "").toLowerCase()
   const s = slotDefault(halaman)
   let cocok = false
-  if (t.includes("apa itu") || t.includes("arti") || t.includes("maksud o/e") || t.includes("apa o/")) {
+  if (/\bapa itu\b|\barti(nya)?\b|\bmaksud o\/e|(^|\s)apa o\//.test(t)) {
     cocok = true
     s.intent = "concept"; s.metric = "oe"
   } else if (t.includes("tren") || t.includes("per bulan") || t.includes("naik/turun") || t.includes("bulanan")) {
@@ -102,18 +117,28 @@ export function slotHeuristik(teks: string, halaman?: string): Record<string, an
     t.includes("ditandai") || t.includes("perlu diperhati") || t.includes("kandidat") || t.includes("antrean") || /\bmana\b/.test(t)) {
     cocok = true
     s.intent = "list"
-    s.metric = t.includes("oe") ? "oe" : (t.includes(" z") || t.startsWith("z ") ? "z" : "rupiah")
+    s.metric = t.includes("oe") || t.includes("o/e") ? "oe" : (t.includes(" z") || t.startsWith("z ") ? "z" : "rupiah")
   } else if (t.includes("selisih") || t.includes("rupiah")) {
     cocok = true
     s.intent = "aggregate"; s.metric = "rupiah"
   }
   const mod = t.match(/\bmodul[^\d]{0,3}(3|4|9|16)\b/)
   if (mod) { s.module = mod[1]; cocok = true }
+  else if (t.includes("semua modul")) s.module = "all"
+  else if (s.module === "all") {
+    const nm = NAMA_MODUL.find(([kata]) => t.includes(kata))
+    if (nm) { s.module = nm[1]; cocok = cocok || /\bberapa\b/.test(t) }
+  }
+  if (s.intent === "aggregate" && (t.includes("o/e") || /\boe\b/.test(t))) s.metric = "oe"
+  const wil = wilayahDisebut(t, kabKeys)
+  if (wil) s.scope = wil
   // Tidak ada cabang yang cocok DAN tidak menyebut domain sama sekali → tolak,
   // jangan dijawab dengan ringkasan wilayah default (penyebab jawaban seragam).
   if (!cocok && !KATA_DOMAIN.test(t)) {
     return { ...s, intent: "refusal", alasan: "luar_cakupan" }
   }
+  // Yakin = pola cocok dan bukan pertanyaan penjelasan/perbandingan (kecuali tentang satu faskes).
+  s._yakin = cocok && (!NARASI.test(t) || !!s.faskes)
   return s
 }
 
@@ -246,12 +271,15 @@ function ambilPertanyaan(msgs: Array<Record<string, any>>): string {
   return ""
 }
 
-async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: string | undefined, model: Client, t: number): Promise<Record<string, any> | null> {
+async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: string | undefined, model: Client | null, t: number): Promise<Record<string, any> | null> {
   const teks_q = ambilPertanyaan(msgs)
   if (!teks_q) return null
   if (RE_INDIVIDU.test(teks_q)) return { teks: TEMPLATE.G, angka: [], tautan: [], alat: [] }
   if (RE_VONIS.test(teks_q)) return { teks: TEMPLATE.C, angka: [], tautan: [], alat: [] }
-  const slot = await ekstrakSlot(teks_q, halaman || "/", model)
+  // Pola kode yang yakin melewati panggilan LLM pembaca maksud (hemat 2-4 dtk).
+  const kabKeys = Object.keys((await store()).kab)
+  const slotH = slotHeuristik(teks_q, halaman || "/", kabKeys)
+  const slot = slotH._yakin ? { ...slotH, _asal: "heuristic" } : await ekstrakSlot(teks_q, halaman || "/", model)
   const intent = slot.intent
   if (intent === "refusal") {
     const huruf = REFUSAL_SLOT[String(slot.alasan ?? "luar_cakupan")] ?? "D"
@@ -275,6 +303,14 @@ async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: strin
     out.alat = hasil.map(([n]) => n)
     return out
   }
+  const det = NARASI.test(teks_q.toLowerCase()) && !slot.faskes ? null : await jawabDeterministik(slot, hasil, modulSlug(slot.module))
+  if (det) {
+    det.angka ??= []; det.tautan ??= []
+    det.alat = hasil.map(([n]) => n)
+    simpanKache(kunci, det)
+    return det
+  }
+  if (!model) return null
   const pesan = pesanKomposisi(teks_q, slot, hasil)
   // Pertahankan hanya giliran terakhir (satu jawaban assistant terakhir + pesan
   // kini) agar model tidak meniru struktur/angka jawaban-jawaban lama. Pertanyaan
@@ -331,7 +367,15 @@ export async function onRequest(context: { request: Request; env: Record<string,
     const cepat = await jawabCepat(ambilPertanyaan(awal!.messages.filter(m => m && (m.role === "user" || m.role === "assistant"))))
     if (cepat) return Response.json(cepat)
   }
-  if (!KEY()) return Response.json({ detail: "SUMODOP_API_KEY belum diatur" }, { status: 503 })
+  if (!KEY()) {
+    // Tanpa kunci: pertanyaan berstruktur tetap terjawab dari template kode.
+    const msgs0 = (Array.isArray(awal?.messages) ? awal!.messages : [])
+      .filter(m => m && m.content && (m.role === "user" || m.role === "assistant"))
+      .map(m => ({ role: String(m.role), content: String(m.content) })).slice(-12)
+    const h0 = msgs0.length ? await jalankanPipeline(msgs0, (awal as any)?.halaman, null, (await store()).t).catch(() => null) : null
+    if (h0) return Response.json(h0)
+    return Response.json({ detail: "SUMODOP_API_KEY belum diatur" }, { status: 503 })
+  }
   const model = buatClient()
   const S = await store()
   try {

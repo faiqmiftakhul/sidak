@@ -102,7 +102,10 @@ def wilayah_faskes(wilayah):
         return [f for f in S.faskes if f["kab"] == KOTA], KOTA
     if w in ("JATENG", "JAWA TENGAH", "PROVINSI"):
         return S.faskes, "JAWA TENGAH"
-    kab = next((k for k in S.kab if k == w or k.replace("KOTA ", "") == w.replace("KOTA ", "")), None)
+    kab_w = re.sub(r"^(KABUPATEN|KAB\.?)\s+", "", w)
+    # Nama persis didahulukan: "TEGAL" = Kabupaten Tegal, bukan Kota Tegal.
+    kab = next((k for k in (kab_w, w) if k in S.kab), None) or \
+        next((k for k in S.kab if k.replace("KOTA ", "") == w.replace("KOTA ", "")), None)
     if kab:
         return [f for f in S.faskes if f["kab"] == kab], kab
     return [f for f in S.faskes if f["kab"] == KOTA], KOTA
@@ -529,7 +532,7 @@ def slot_heuristik(teks, halaman=None):
     t = (teks or "").lower()
     s = slot_default(halaman)
     cocok = False
-    if any(w in t for w in ("apa itu", "arti", "maksud o/e", "apa o/")):
+    if re.search(r"\bapa itu\b|\barti(nya)?\b|\bmaksud o/e|(^|\s)apa o/", t):
         cocok = True
         s["intent"] = "concept"; s["metric"] = "oe"
     elif any(w in t for w in ("tren", "per bulan", "naik/turun", "bulanan")):
@@ -557,7 +560,7 @@ def slot_heuristik(teks, halaman=None):
             or re.search(r"\bmana\b", t):
         cocok = True
         s["intent"] = "list"
-        s["metric"] = "oe" if "oe" in t else ("z" if " z" in t or t.startswith("z ") else "rupiah")
+        s["metric"] = "oe" if ("oe" in t or "o/e" in t) else ("z" if " z" in t or t.startswith("z ") else "rupiah")
     elif "selisih" in t or "rupiah" in t:
         cocok = True
         s["intent"] = "aggregate"; s["metric"] = "rupiah"
@@ -565,13 +568,49 @@ def slot_heuristik(teks, halaman=None):
     if mod:
         s["module"] = mod.group(1)
         cocok = True
+    elif "semua modul" in t:
+        s["module"] = "all"
+    elif s["module"] == "all":
+        for kata, no in _NAMA_MODUL:
+            if kata in t:
+                s["module"] = no
+                cocok = cocok or bool(re.search(r"\bberapa\b", t))
+                break
+    if s["intent"] == "aggregate" and ("o/e" in t or re.search(r"\boe\b", t)):
+        s["metric"] = "oe"
+    wil = _wilayah_disebut(t)
+    if wil:
+        s["scope"] = wil
     # Tidak ada cabang yang cocok DAN tidak menyebut domain sama sekali -> tolak,
     # jangan dijawab dengan ringkasan wilayah default (penyebab jawaban seragam).
     if not cocok and not _KATA_DOMAIN.search(t):
         s["intent"] = "refusal"
         s["alasan"] = "luar_cakupan"
         return s
+    # Yakin = pola cocok, bukan pertanyaan penjelasan/perbandingan, dan tidak menyebut wilayah selain Kota Semarang.
+    s["_yakin"] = bool(cocok and (not _NARASI.search(t) or s.get("faskes")))
     return s
+
+
+_NAMA_MODUL = (("readmisi", "16"), ("fragmentasi", "9"), ("severity", "4"), ("upcoding", "4"), ("keparahan", "4"),
+               ("rujukan", "3"), ("merujuk", "3"), ("rujuk", "3"))
+_NARASI = re.compile(r"\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|"
+                     r"beda|perbedaan|rekomendasi|saran|sebaiknya)\b")
+
+
+def _wilayah_disebut(t):
+    """Kab/kota Jawa Tengah selain Kota Semarang yang disebut di pertanyaan (kunci S.kab), atau "JAWA TENGAH"."""
+    if re.search(r"jawa tengah|jateng|provinsi", t):
+        return "JAWA TENGAH"
+    if re.search(r"\b(kabupaten|kab\.?) semarang\b", t):
+        return "KABUPATEN SEMARANG"
+    for k in S.kab:
+        if k.startswith("KOTA ") and k != KOTA and re.search(r"\b%s\b" % re.escape(k.lower()), t):
+            return k
+    for k in S.kab:
+        if not k.startswith("KOTA ") and k != "SEMARANG" and re.search(r"\b%s\b" % re.escape(k.lower()), t):
+            return k
+    return None
 
 
 def modul_slug(m):
@@ -650,6 +689,176 @@ def pilih_retrieval(slot):
     if intent == "workflow":
         return [("metodologi", {})]
     return []
+
+
+# ------------------------------------------------- jawaban template (tanpa LLM)
+# Pertanyaan berstruktur dijawab kode dari hasil alat: cepat, dan angkanya identik dengan data.
+_BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+_UNIT_VOLUME = {"rujukan": "kunjungan sakit", "fragmentasi": "kunjungan RJTL", "severity": "rawat inap", "readmisi": "rawat inap"}
+_URUT_LABEL = {"rupiah_tertimbang": "selisih rupiah tertimbang", "rupiah": "selisih rupiah sampel", "OE": "O/E",
+               "z": "skor z", "volume": "volume"}
+_CATATAN = "Ini indikasi statistik dari sampel ±1% peserta untuk prioritas audit, bukan bukti pelanggaran."
+_KONSEP = ("O/E adalah perbandingan kejadian nyata (O) dengan kejadian wajar (E), yaitu jumlah yang diperkirakan bila faskes "
+           "melayani pasien yang sama seperti rekan sebayanya. O/E 1 berarti sesuai perkiraan, di atas 1 berarti kejadian nyata lebih banyak. "
+           "Skor z mengukur seberapa jauh selisih itu dari kebetulan; z di atas 1,96 berarti selisihnya kecil kemungkinan terjadi karena kebetulan. "
+           "SIDAK memberi status Perlu perhatian bila O/E di atas 1,05, z di atas 1,96, dan polanya konsisten di dua paruh periode; "
+           "Diamati bila hanya sebagian ambang terlewati.")
+
+
+def fid(x, d=0):
+    """Angka gaya Indonesia: 1.234,5"""
+    if x is None:
+        return "-"
+    return format(x, ",.%df" % d).replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _sumber(mod=None):
+    per = S.ring["periode"].split(" (")[0]
+    return ("Modul #%d · Data Sampel BPJS %s" % (NOMOR[mod], per)) if mod else ("Data Sampel BPJS Kesehatan %s, SIDAK" % per)
+
+
+def _nama_modul(m):
+    return "modul #%d %s" % (NOMOR[m], NAMA[m])
+
+
+def jawab_deterministik(slot, hasil):
+    """Jawaban 5 lapis dari hasil alat. None bila pertanyaan butuh narasi model."""
+    r = dict(hasil)
+    intent, met, mod = slot.get("intent"), slot.get("metric") or "rupiah", modul_slug(slot.get("module"))
+    if intent not in ("fact", "aggregate", "ranking", "list", "trend", "concept"):
+        return None
+    out = None
+    if intent == "concept" and slot.get("_asal") == "heuristic":
+        out = {"teks": _KONSEP, "angka": [], "tautan": [{"label": "Metodologi", "url": "/metodologi"}], "sumber": "Metodologi SIDAK"}
+    elif "jelaskan_temuan" in r:
+        out = _det_faskes(r["jelaskan_temuan"], mod)
+    elif "trend" in r:
+        out = _det_tren(r["trend"])
+    elif "daftar_temuan" in r:
+        out = _det_daftar(r["daftar_temuan"], r.get("faskes_count"), mod, slot)
+    elif "faskes_count" in r:
+        c = r["faskes_count"]; w = _label_wilayah(c["wilayah"])
+        out = {"teks": "Terdapat %s RS dan %s FKTP di %s dalam Data Sampel BPJS Kesehatan. Dari jumlah itu, %s faskes berstatus "
+                       "Perlu perhatian pada setidaknya satu modul." % (fid(c["faskes_fkrtl"]), fid(c["faskes_fktp"]), w, fid(c["faskes_perlu_perhatian"])),
+               "angka": [{"label": "RS", "nilai": fid(c["faskes_fkrtl"])}, {"label": "FKTP", "nilai": fid(c["faskes_fktp"])}],
+               "tautan": [{"label": "Antrean audit", "url": "/antrean"}], "sumber": _sumber()}
+    elif "ambil_indikator" in r and "error" not in r["ambil_indikator"]:
+        out = _det_indikator(r["ambil_indikator"], met)
+    elif "ringkas_wilayah" in r:
+        out = _det_wilayah(r["ringkas_wilayah"], met)
+    if out:
+        out["deterministik"] = True
+    return out
+
+
+def _det_wilayah(w, met):
+    lw = _label_wilayah(w["wilayah"]); per = w["per_modul"]
+    if met == "oe":
+        rinci = "; ".join("%s O/E %s" % (_nama_modul(m), fid(per[m]["OE"], 2)) for m in NOMOR if per[m]["OE"] is not None)
+        return {"teks": "O/E tiap modul di %s: %s. O/E di atas 1 berarti kejadian nyata lebih banyak dari yang wajar. %s" % (lw, rinci, _CATATAN),
+                "angka": [{"label": "O/E " + NAMA[m], "nilai": fid(per[m]["OE"], 2)} for m in NOMOR if per[m]["OE"] is not None],
+                "tautan": [{"label": "Ringkasan", "url": "/"}], "sumber": _sumber()}
+    urut = sorted(NOMOR, key=lambda m: per[m]["selisih_rupiah_tertimbang"], reverse=True)
+    rinci = ", ".join("%s %s" % (_nama_modul(m), rp(per[m]["selisih_rupiah_tertimbang"])) for m in urut)
+    return {"teks": "Estimasi selisih rupiah faskes yang ditandai di %s adalah %s pada data sampel, atau sekitar %s setelah dibobot "
+                    "ke populasi peserta. Rincian tertimbang: %s. %s" % (lw, rp(w["selisih_rupiah_sampel"]), rp(w["selisih_rupiah_tertimbang"]), rinci, _CATATAN),
+            "angka": [{"label": "Selisih sampel", "nilai": rp(w["selisih_rupiah_sampel"])},
+                      {"label": "Selisih tertimbang", "nilai": rp(w["selisih_rupiah_tertimbang"])}],
+            "tautan": [{"label": "Antrean audit", "url": "/antrean"}], "sumber": _sumber()}
+
+
+def _det_indikator(a, met):
+    m = next(k for k, v in NOMOR.items() if v == a["nomor"]); t = a["total"]; lw = _label_wilayah(a["wilayah"])
+    hitung = "%s dari %s faskes yang dinilai berstatus Perlu perhatian dan %s Diamati." % (fid(t["perlu_perhatian"]), fid(t["faskes_dinilai"]), fid(t["diamati"]))
+    oe_kal = "O/E %s di %s adalah %s: %s kejadian nyata dibanding %s kejadian wajar." % (
+        _nama_modul(m), lw, fid(t["OE"], 2), fid(t["observed"]), fid(t["expected"], 1))
+    rp_kal = "Selisih rupiah %s di %s adalah %s pada data sampel, atau sekitar %s tertimbang." % (
+        _nama_modul(m), lw, rp(t["selisih_rupiah_sampel"]), rp(t["selisih_rupiah_tertimbang"]))
+    urutan = {"oe": [oe_kal, hitung], "count": [hitung, oe_kal]}.get(met, [rp_kal, hitung])
+    return {"teks": " ".join(urutan + [_CATATAN]),
+            "angka": [{"label": "O/E", "nilai": fid(t["OE"], 2)}, {"label": "Perlu perhatian", "nilai": fid(t["perlu_perhatian"])},
+                      {"label": "Selisih tertimbang", "nilai": rp(t["selisih_rupiah_tertimbang"])}],
+            "tautan": [{"label": "Modul #%d" % NOMOR[m], "url": "/modul/" + m}], "sumber": _sumber(m)}
+
+
+def _det_daftar(d, hitung, mod, slot):
+    lw = _label_wilayah(d["wilayah"]); rows = d["temuan"][:5]
+    lingkup = (" pada " + _nama_modul(mod)) if mod else ""
+    if not rows:
+        return {"teks": "Tidak ada faskes di %s yang berstatus Perlu perhatian atau Diamati%s. %s" % (lw, lingkup, _CATATAN),
+                "angka": [], "tautan": [{"label": "Modul", "url": "/modul/" + mod}] if mod else [{"label": "Antrean audit", "url": "/antrean"}],
+                "sumber": _sumber(mod)}
+    if hitung:
+        buka = "%s faskes di %s berstatus perlu perhatian pada setidaknya satu modul." % (fid(hitung["faskes_perlu_perhatian"]), lw)
+    else:
+        buka = "Ada %s temuan berstatus perlu perhatian atau diamati di %s%s." % (fid(d["jumlah_temuan"]), lw, lingkup)
+    urut = {"oe": "OE", "z": "z", "count": "volume"}.get(slot.get("metric"), "rupiah_tertimbang")
+    tabel = ["| Faskes | Modul | Status | O/E | Selisih tertimbang |", "|---|---|---|---|---|"]
+    tabel += ["| %s | #%d %s | %s | %s | %s |" % (x["faskes"], x["nomor"], x["modul"], x["status"], fid(x["OE"], 2), rp(x["selisih_rupiah_tertimbang"]))
+              for x in rows]
+    return {"teks": "%s Urutan teratas menurut %s:\n%s\n%s" % (buka, _URUT_LABEL[urut], "\n".join(tabel), _CATATAN),
+            "angka": [{"label": x["faskes"], "nilai": fid(x["OE"], 2), "satuan": "O/E"} for x in rows[:3]],
+            "tautan": [{"label": x["faskes"], "url": x["tautan"]} for x in rows[:3]] + [{"label": "Antrean audit", "url": "/antrean"}],
+            "sumber": _sumber(mod)}
+
+
+def _det_tren(tr):
+    if tr.get("error") or tr["wilayah"] != KOTA:
+        return {"teks": "Deret bulanan hanya tersedia untuk Kota Semarang dalam sampel saat ini.", "angka": [], "tautan": [], "sumber": _sumber()}
+    kal, angka = [], []
+    for m, deret in tr["modul"].items():
+        oe = [b["OE"] for b in deret if b.get("OE") is not None]
+        if len(oe) < 6:
+            continue
+        awal, akhir = sum(oe[:3]) / 3, sum(oe[-3:]) / 3
+        arah = "meningkat" if akhir - awal > 0.05 else ("menurun" if awal - akhir > 0.05 else "fluktuatif tanpa arah naik atau turun yang jelas")
+        b0, b1 = deret[0], deret[-1]
+        kal.append("O/E bulanan %s %s: %s pada %s 2024 dan %s pada %s 2024 (puncak %s)." % (
+            _nama_modul(m), arah, fid(b0["OE"], 2), _BULAN[b0["bln"] - 1], fid(b1["OE"], 2), _BULAN[b1["bln"] - 1], fid(max(oe), 2)))
+        angka.append({"label": "O/E %s %s" % (NAMA[m], _BULAN[b1["bln"] - 1]), "nilai": fid(b1["OE"], 2)})
+    if not kal:
+        return None
+    satu = len(tr["modul"]) == 1
+    return {"teks": " ".join(kal) + " Pembanding tiap bulan adalah kejadian wajar bulan yang sama di Kota Semarang.",
+            "angka": angka, "tautan": [{"label": "Grafik tren", "url": tr["tautan"]}],
+            "sumber": _sumber(next(iter(tr["modul"])) if satu else None)}
+
+
+def _det_faskes(j, mod):
+    if j.get("error"):
+        return {"teks": TEMPLATE["E"], "angka": [], "tautan": [], "sumber": ""}
+    mods = j["modul"]; kode = j["faskes"]
+    pilih = mod if mod in mods else next((k for k in mods if mods[k]["status"] == STATUS["perhatian"]),
+                                         next((k for k in mods if mods[k]["status"] == STATUS["diamati"]), None))
+    if pilih is None:
+        rinci = "; ".join("%s O/E %s" % (_nama_modul(k), fid(v["OE"], 2)) for k, v in mods.items() if v["OE"] is not None)
+        return {"teks": "%s (%s %s, %s) tidak ditandai: semua modul yang dinilai berada dalam rentang wajar atau volumenya terlalu kecil. %s." % (
+                    kode, j["tipe"], j["kelas"], j["kab_kota"].title(), rinci),
+                "angka": [], "tautan": [{"label": kode, "url": j["tautan"]}], "sumber": _sumber(), "deterministik": True}
+    h = mods[pilih]
+    if h["status"] == STATUS["volume_rendah"]:
+        teks = "%s pada %s: volume %s %s terlalu kecil untuk dinilai." % (kode, _nama_modul(pilih), fid(h["volume"]), _UNIT_VOLUME[pilih])
+    else:
+        konsisten = "konsisten di dua paruh periode" if h["stabil_dua_paruh"] else "belum konsisten di dua paruh periode"
+        teks = ("%s berstatus %s pada %s: O/E %s dan skor z %s, %s. Dari %s %s, tercatat %s kejadian dibanding %s kejadian wajar, "
+                "selisih %s kejadian atau %s pada sampel (sekitar %s tertimbang)." % (
+                    kode, h["status"], _nama_modul(pilih), fid(h["OE"], 2), fid(h["z"], 2), konsisten, fid(h["volume"]), _UNIT_VOLUME[pilih],
+                    fid(h["observed"]), fid(h["expected"], 1), fid(h["selisih_kejadian"], 1), rp(h["selisih_rupiah_sampel"]),
+                    rp(h["selisih_rupiah_tertimbang"])))
+        kon = h.get("penyumbang_terbesar") or []
+        if kon:
+            teks += " Penyumbang terbesar: %s." % ", ".join("%s (%s vs %s wajar)" % (k["nama"], fid(k["O"]), fid(k["E"], 1 if k["E"] >= 1 else 2)) for k in kon[:3])
+        seb = h.get("pembanding_sebaya") or []
+        if seb:
+            teks += " Pembanding sebaya kelas yang sama: %s." % ", ".join("%s O/E %s" % (x["faskes"], fid(x["OE"], 2)) for x in seb)
+    lain = ["%s %s" % (_nama_modul(k), v["status"].lower()) for k, v in mods.items() if k != pilih]
+    if lain:
+        teks += " Modul lain: %s." % "; ".join(lain)
+    return {"teks": teks + " " + _CATATAN,
+            "angka": [{"label": "O/E", "nilai": fid(h["OE"], 2)}, {"label": "Skor z", "nilai": fid(h["z"], 2)},
+                      {"label": "Selisih tertimbang", "nilai": rp(h["selisih_rupiah_tertimbang"])}],
+            "tautan": [{"label": kode, "url": j["tautan"]}, {"label": "Modul #%d" % NOMOR[pilih], "url": "/modul/" + pilih}],
+            "sumber": _sumber(pilih)}
 
 
 def akses_retrieval(pilihan):
@@ -733,7 +942,9 @@ def jalankan_pipeline(msgs, halaman, model):
     teks_q = ambil_pertanyaan(msgs)
     if not teks_q:
         return None
-    slot = ekstrak_slot(teks_q, halaman or "/", model=model)
+    # Pola kode yang yakin melewati panggilan LLM pembaca maksud (hemat 2-4 dtk).
+    slot_h = slot_heuristik(teks_q, halaman or "/")
+    slot = dict(slot_h, _asal="heuristic") if slot_h.get("_yakin") else ekstrak_slot(teks_q, halaman or "/", model=model)
     intent = slot.get("intent")
     if intent == "refusal":
         huruf = _REFUSAL_SLOT.get(str(slot.get("alasan") or "luar_cakupan"), "D")
@@ -754,6 +965,14 @@ def jalankan_pipeline(msgs, halaman, model):
         out["dari_kache"] = True
         out["alat"] = [n for n, _ in hasil]
         return out
+    det = None if (_NARASI.search(teks_q.lower()) and not slot.get("faskes")) else jawab_deterministik(slot, hasil)
+    if det:
+        det.setdefault("angka", []); det.setdefault("tautan", [])
+        det["alat"] = [n for n, _ in hasil]
+        simpan_kache(kunci, det)
+        return det
+    if model is None:
+        return None
     pesan = pesan_komposisi(teks_q, slot, hasil)
     # Pertahankan hanya giliran terakhir (satu jawaban assistant terakhir + pesan
     # kini) agar model tidak meniru struktur/angka jawaban-jawaban lama.
@@ -872,7 +1091,9 @@ Fakta:\n%s"""
 
 
 def _label_wilayah(wil):
-    return {"KOTA SEMARANG": "Kota Semarang", "JAWA TENGAH": "Jawa Tengah"}.get(wil, wil.title())
+    if wil in ("KOTA SEMARANG", "JAWA TENGAH"):
+        return wil.title()
+    return ("Kabupaten " + wil.title()) if (wil in S.kab and not wil.startswith("KOTA ")) else wil.title()
 
 
 def digest_deterministik(scope):
@@ -996,13 +1217,17 @@ def chat(req: Chat):
     cepat = jawab_cepat(pertama)
     if cepat:
         return cepat
-    if not os.environ.get("SUMOPOD_API_KEY"):
-        raise HTTPException(503, "SUMOPOD_API_KEY belum diatur")
     try:
         client = buat_model()
     except ImportError:
-        raise HTTPException(503, "paket openai belum terpasang")
+        client = None
     if client is None:
+        # Tanpa kunci: pertanyaan berstruktur tetap terjawab dari template kode.
+        msgs0 = [{"role": m["role"], "content": str(m.get("content") or "")}
+                 for m in req.messages if m.get("content") and m.get("role") in ("user", "assistant")][-12:]
+        hasil0 = jalankan_pipeline(msgs0, req.halaman, None) if msgs0 else None
+        if hasil0:
+            return hasil0
         raise HTTPException(503, "SUMOPOD_API_KEY belum diatur")
     # SumoPod adalah OpenAI-compatible; gunakan id yang diketahui OpenAI.
     # Peran dari klien dibatasi user/assistant: pesan "system" palsu tidak boleh menimpa SYSTEM.
