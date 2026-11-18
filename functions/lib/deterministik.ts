@@ -34,6 +34,11 @@ async function sumber(mod?: string | null): Promise<string> {
 export async function jawabDeterministik(slot: J, hasil: Array<[string, unknown]>, mod: string | null): Promise<J | null> {
   const r = Object.fromEntries(hasil) as Record<string, J>
   const intent = slot.intent, met = slot.metric ?? "rupiah"
+  if (intent === "comparison" && slot.banding) {
+    const b = await detBanding(hasil)
+    if (b) b.deterministik = true
+    return b
+  }
   if (!["fact", "aggregate", "ranking", "list", "trend", "concept"].includes(intent)) return null
   let out: J | null = null
   if (intent === "concept" && slot._asal === "heuristic") {
@@ -52,6 +57,40 @@ export async function jawabDeterministik(slot: J, hasil: Array<[string, unknown]
   else if (r.ringkas_wilayah) out = await detWilayah(r.ringkas_wilayah, met)
   if (out) out.deterministik = true
   return out
+}
+
+async function detBanding(hasil: Array<[string, unknown]>): Promise<J | null> {
+  const item = hasil.map(([, r]) => r as J).filter(r => r && typeof r === "object" && !r.error)
+  if (item.length < 2) return null
+  if ("total" in item[0]) {
+    const lw = await labelWilayah(item[0].wilayah)
+    const urut = item.map(a => [slugModul(a.nomor), a.total] as [string, J]).sort((x, y) => y[1].selisih_rupiah_tertimbang - x[1].selisih_rupiah_tertimbang)
+    const [[m1, t1], [m2, t2]] = urut
+    const buka = t1.selisih_rupiah_tertimbang === t2.selisih_rupiah_tertimbang
+      ? `Dampak rupiah ${namaModul(m1)} dan ${namaModul(m2)} di ${lw} sama besar: ${rp(t1.selisih_rupiah_tertimbang)} tertimbang.`
+      : `Dampak ${namaModul(m1)} lebih besar di ${lw}: ${rp(t1.selisih_rupiah_tertimbang)} tertimbang dibandingkan ${rp(t2.selisih_rupiah_tertimbang)} pada ${namaModul(m2)}.`
+    const kap = (x: string) => x[0].toUpperCase() + x.slice(1)
+    const rinci = urut.map(([m, t]) => `${kap(namaModul(m))}: O/E ${fid(t.OE, 2)}, ${fid(t.perlu_perhatian)} dari ${fid(t.faskes_dinilai)} faskes yang dinilai berstatus Perlu perhatian, selisih ${rp(t.selisih_rupiah_sampel)} pada sampel.`).join(" ")
+    return {
+      teks: `${buka} ${rinci} ${CATATAN}`,
+      angka: urut.map(([m, t]) => ({ label: `#${NOMOR[m]} ${NAMA[m]}`, nilai: rp(t.selisih_rupiah_tertimbang), satuan: "tertimbang" })),
+      tautan: urut.map(([m]) => ({ label: `Modul #${NOMOR[m]}`, url: "/modul/" + m })), sumber: await sumber(),
+    }
+  }
+  const baris = item.map(j => {
+    const mods = j.modul as Record<string, J>, ks = Object.keys(mods)
+    return [j, ks.find(k => mods[k].status === STATUS.perhatian) ?? ks.find(k => mods[k].status === STATUS.diamati) ?? null] as [J, string | null]
+  }).sort((x, y) => y[0].selisih_rupiah_tertimbang - x[0].selisih_rupiah_tertimbang)
+  const teks = [`${baris[0][0].faskes} mencatat selisih tertimbang lebih besar: ${rp(baris[0][0].selisih_rupiah_tertimbang)} dibandingkan ${rp(baris[1][0].selisih_rupiah_tertimbang)} pada ${baris[1][0].faskes}.`]
+  for (const [j, k] of baris) {
+    if (k) { const h = j.modul[k]; teks.push(`${j.faskes} (${j.tipe} ${j.kelas}): ${h.status} pada ${namaModul(k)}, O/E ${fid(h.OE, 2)} dan skor z ${fid(h.z, 2)}.`) }
+    else teks.push(`${j.faskes} (${j.tipe} ${j.kelas}): tidak ditandai di modul mana pun.`)
+  }
+  return {
+    teks: [...teks, CATATAN].join(" "),
+    angka: baris.map(([j]) => ({ label: j.faskes, nilai: rp(j.selisih_rupiah_tertimbang), satuan: "tertimbang" })),
+    tautan: baris.map(([j]) => ({ label: j.faskes, url: j.tautan })), sumber: await sumber(),
+  }
 }
 
 async function detWilayah(w: J, met: string): Promise<J> {

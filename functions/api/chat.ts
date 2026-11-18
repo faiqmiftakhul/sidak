@@ -77,6 +77,7 @@ function slotDefault(halaman?: string): Record<string, any> {
 
 const NAMA_MODUL: Array<[string, string]> = [["readmisi", "16"], ["fragmentasi", "9"], ["severity", "4"], ["upcoding", "4"], ["keparahan", "4"],
   ["rujukan", "3"], ["merujuk", "3"], ["rujuk", "3"]]
+const BANDING = /\b(bandingkan|dibandingkan|banding|perbandingan|versus|vs)\b/
 const NARASI = /\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|beda|perbedaan|rekomendasi|saran|sebaiknya)\b/
 const reKata = (x: string) => new RegExp("\\b" + x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b")
 
@@ -132,13 +133,19 @@ export function slotHeuristik(teks: string, halaman?: string, kabKeys: string[] 
   if (s.intent === "aggregate" && (t.includes("o/e") || /\boe\b/.test(t))) s.metric = "oe"
   const wil = wilayahDisebut(t, kabKeys)
   if (wil) s.scope = wil
+  if (BANDING.test(t)) {
+    const kode = [...new Set((t.match(/\b(?:rs|fktp)[- ]?\d{3,}/g) ?? []).map(x => x.toUpperCase().replace(" ", "-")))]
+    const mods = [...new Set([...[...t.matchAll(/#\s?(3|4|9|16)\b/g)].map(m => m[1]), ...NAMA_MODUL.filter(([kata]) => t.includes(kata)).map(([, no]) => no)])]
+    if (kode.length >= 2) { Object.assign(s, { intent: "comparison", banding: { faskes: kode.slice(0, 3) }, faskes: null }); cocok = true }
+    else if (mods.length >= 2) { Object.assign(s, { intent: "comparison", banding: { modul: mods.slice(0, 4) }, module: "all" }); cocok = true }
+  }
   // Tidak ada cabang yang cocok DAN tidak menyebut domain sama sekali → tolak,
   // jangan dijawab dengan ringkasan wilayah default (penyebab jawaban seragam).
   if (!cocok && !KATA_DOMAIN.test(t)) {
     return { ...s, intent: "refusal", alasan: "luar_cakupan" }
   }
   // Yakin = pola cocok dan bukan pertanyaan penjelasan/perbandingan (kecuali tentang satu faskes).
-  s._yakin = cocok && (!NARASI.test(t) || !!s.faskes)
+  s._yakin = cocok && (!NARASI.test(t) || !!s.faskes || !!s.banding)
   return s
 }
 
@@ -177,6 +184,9 @@ function pilihRetrieval(slot: Record<string, any>): Array<[string, Record<string
   const f = slot.faskes
   const topN = Math.min(Number(slot.topN) || 5, 20)
   if (intent === "concept") return [["metodologi", { topik: "oe" }]]
+  const b = slot.banding ?? {}
+  if (intent === "comparison" && b.modul) return b.modul.map((m: string) => ["ambil_indikator", { modul: modulSlug(m), wilayah: scop }] as [string, Record<string, any>])
+  if (intent === "comparison" && b.faskes) return b.faskes.map((x: string) => ["jelaskan_temuan", { faskes: x }] as [string, Record<string, any>])
   if (f && (intent === "fact" || intent === "aggregate" || intent === "list" || intent === "comparison")) {
     const a: Record<string, any> = { faskes: f }
     if (mod) a.modul = mod
@@ -303,7 +313,8 @@ async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: strin
     out.alat = hasil.map(([n]) => n)
     return out
   }
-  const det = NARASI.test(teks_q.toLowerCase()) && !slot.faskes ? null : await jawabDeterministik(slot, hasil, modulSlug(slot.module))
+  const narasi = NARASI.test(teks_q.toLowerCase()) && !(slot.faskes || slot.banding)
+  const det = narasi ? null : await jawabDeterministik(slot, hasil, modulSlug(slot.module))
   if (det) {
     det.angka ??= []; det.tautan ??= []
     det.alat = hasil.map(([n]) => n)

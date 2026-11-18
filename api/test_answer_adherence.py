@@ -335,9 +335,24 @@ def uji_luring(cetak=True):
         main.KACHE_JAWABAN.clear()
         assert harap in main.jalankan_pipeline([{"role": "user", "content": q}], "/", None)["teks"], "T15 wilayah: %r" % q
     # pertanyaan penjelasan/perbandingan tetap butuh model; tanpa model -> None (bukan jawaban template yang meleset)
-    for q in ("Bandingkan modul #4 dan #16", "Kenapa sebuah faskes ditandai perlu perhatian?"):
+    for q in ("Bandingkan Semarang dan Demak", "Kenapa sebuah faskes ditandai perlu perhatian?"):
         main.KACHE_JAWABAN.clear()
         assert main.jalankan_pipeline([{"role": "user", "content": q}], "/", None) is None, "T15: %r dijawab template" % q
+
+    # T16 - perbandingan modul/faskes: template instan, dua kartu, angka tertelusur, data kedua sisi hadir
+    for q, harap in (("Bandingkan modul #4 dan #16, mana yang lebih besar dampaknya?", ("Rp 36,0 M", "Readmisi 30 hari")),
+                     ("bandingkan readmisi vs fragmentasi", ("Fragmentasi layanan", "Readmisi 30 hari")),
+                     ("Bandingkan RS-31595 dan RS-31598", ("Rp 18,4 M", "Rp 5,2 M"))):
+        main.KACHE_JAWABAN.clear()
+        stub = ModelStub()
+        out = main.jalankan_pipeline([{"role": "user", "content": q}], "/", stub)
+        assert out and out.get("deterministik") and not stub.panggilan, "T16: %r tidak instan" % q
+        assert all(h in out["teks"] for h in harap) and len(out["angka"]) == 2 and "dibanding" in out["teks"], "T16: %r -> %s" % (q, out["teks"][:160])
+        slot = main.slot_heuristik(q)
+        sumber = main.kumpulkan_angka([r for _, r in main.akses_retrieval(main.pilih_retrieval(slot))], q)
+        assert main.periksa_angka(out, sumber) == [], "T16: angka tak tertelusur %r" % main.periksa_angka(out, sumber)
+    main.KACHE_JAWABAN.clear()
+    assert main.jalankan_pipeline([{"role": "user", "content": "Bandingkan Semarang dan Demak"}], "/", None) is None, "T16: perbandingan wilayah harus ke model"
 
     # T10 - SPA tidak menyajikan berkas di luar web/dist
     if hasattr(main, "spa"):
@@ -349,7 +364,7 @@ def uji_luring(cetak=True):
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T15 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T16 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):

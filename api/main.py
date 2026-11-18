@@ -581,6 +581,15 @@ def slot_heuristik(teks, halaman=None):
     wil = _wilayah_disebut(t)
     if wil:
         s["scope"] = wil
+    if _BANDING.search(t):
+        kode = list(dict.fromkeys(x.upper().replace(" ", "-") for x in re.findall(r"\b(?:rs|fktp)[- ]?\d{3,}", t)))
+        mods = list(dict.fromkeys(re.findall(r"#\s?(3|4|9|16)\b", t) + [no for kata, no in _NAMA_MODUL if kata in t]))
+        if len(kode) >= 2:
+            s.update(intent="comparison", banding={"faskes": kode[:3]}, faskes=None)
+            cocok = True
+        elif len(mods) >= 2:
+            s.update(intent="comparison", banding={"modul": mods[:4]}, module="all")
+            cocok = True
     # Tidak ada cabang yang cocok DAN tidak menyebut domain sama sekali -> tolak,
     # jangan dijawab dengan ringkasan wilayah default (penyebab jawaban seragam).
     if not cocok and not _KATA_DOMAIN.search(t):
@@ -588,12 +597,13 @@ def slot_heuristik(teks, halaman=None):
         s["alasan"] = "luar_cakupan"
         return s
     # Yakin = pola cocok, bukan pertanyaan penjelasan/perbandingan, dan tidak menyebut wilayah selain Kota Semarang.
-    s["_yakin"] = bool(cocok and (not _NARASI.search(t) or s.get("faskes")))
+    s["_yakin"] = bool(cocok and (not _NARASI.search(t) or s.get("faskes") or s.get("banding")))
     return s
 
 
 _NAMA_MODUL = (("readmisi", "16"), ("fragmentasi", "9"), ("severity", "4"), ("upcoding", "4"), ("keparahan", "4"),
                ("rujukan", "3"), ("merujuk", "3"), ("rujuk", "3"))
+_BANDING = re.compile(r"\b(bandingkan|dibandingkan|banding|perbandingan|versus|vs)\b")
 _NARASI = re.compile(r"\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|"
                      r"beda|perbedaan|rekomendasi|saran|sebaiknya)\b")
 
@@ -661,6 +671,11 @@ def pilih_retrieval(slot):
     f = slot.get("faskes"); topN = min(int(slot.get("topN") or 5), 20)
     if intent == "concept":
         return [("metodologi", {"topik": "oe"})]
+    b = slot.get("banding") or {}
+    if intent == "comparison" and b.get("modul"):
+        return [("ambil_indikator", {"modul": modul_slug(m), "wilayah": scop}) for m in b["modul"]]
+    if intent == "comparison" and b.get("faskes"):
+        return [("jelaskan_temuan", {"faskes": x}) for x in b["faskes"]]
     if f and intent in ("fact", "aggregate", "list", "comparison"):
         a = {"faskes": f}
         if mod:
@@ -725,6 +740,11 @@ def jawab_deterministik(slot, hasil):
     """Jawaban 5 lapis dari hasil alat. None bila pertanyaan butuh narasi model."""
     r = dict(hasil)
     intent, met, mod = slot.get("intent"), slot.get("metric") or "rupiah", modul_slug(slot.get("module"))
+    if intent == "comparison" and slot.get("banding"):
+        out = _det_banding(hasil)
+        if out:
+            out["deterministik"] = True
+        return out
     if intent not in ("fact", "aggregate", "ranking", "list", "trend", "concept"):
         return None
     out = None
@@ -749,6 +769,45 @@ def jawab_deterministik(slot, hasil):
     if out:
         out["deterministik"] = True
     return out
+
+
+def _det_banding(hasil):
+    item = [r for _, r in hasil if isinstance(r, dict) and not r.get("error")]
+    if len(item) < 2:
+        return None
+    if "total" in item[0]:
+        lw = _label_wilayah(item[0]["wilayah"])
+        mods = [(next(k for k, v in NOMOR.items() if v == a["nomor"]), a["total"]) for a in item]
+        urut = sorted(mods, key=lambda x: x[1]["selisih_rupiah_tertimbang"], reverse=True)
+        (m1, t1), (m2, t2) = urut[0], urut[1]
+        if t1["selisih_rupiah_tertimbang"] == t2["selisih_rupiah_tertimbang"]:
+            buka = "Dampak rupiah %s dan %s di %s sama besar: %s tertimbang." % (_nama_modul(m1), _nama_modul(m2), lw, rp(t1["selisih_rupiah_tertimbang"]))
+        else:
+            buka = "Dampak %s lebih besar di %s: %s tertimbang dibandingkan %s pada %s." % (
+                _nama_modul(m1), lw, rp(t1["selisih_rupiah_tertimbang"]), rp(t2["selisih_rupiah_tertimbang"]), _nama_modul(m2))
+        rinci = " ".join("%s: O/E %s, %s dari %s faskes yang dinilai berstatus Perlu perhatian, selisih %s pada sampel." % (
+            _nama_modul(m)[0].upper() + _nama_modul(m)[1:], fid(t["OE"], 2), fid(t["perlu_perhatian"]), fid(t["faskes_dinilai"]), rp(t["selisih_rupiah_sampel"]))
+            for m, t in urut)
+        return {"teks": "%s %s %s" % (buka, rinci, _CATATAN),
+                "angka": [{"label": "#%d %s" % (NOMOR[m], NAMA[m]), "nilai": rp(t["selisih_rupiah_tertimbang"]), "satuan": "tertimbang"} for m, t in urut],
+                "tautan": [{"label": "Modul #%d" % NOMOR[m], "url": "/modul/" + m} for m, _ in urut], "sumber": _sumber()}
+    baris = []
+    for j in item:
+        mods = j["modul"]
+        k = next((k for k in mods if mods[k]["status"] == STATUS["perhatian"]), next((k for k in mods if mods[k]["status"] == STATUS["diamati"]), None))
+        baris.append((j, k))
+    urut = sorted(baris, key=lambda x: x[0]["selisih_rupiah_tertimbang"], reverse=True)
+    teks = ["%s mencatat selisih tertimbang lebih besar: %s dibandingkan %s pada %s." % (
+        urut[0][0]["faskes"], rp(urut[0][0]["selisih_rupiah_tertimbang"]), rp(urut[1][0]["selisih_rupiah_tertimbang"]), urut[1][0]["faskes"])]
+    for j, k in urut:
+        if k:
+            h = j["modul"][k]
+            teks.append("%s (%s %s): %s pada %s, O/E %s dan skor z %s." % (j["faskes"], j["tipe"], j["kelas"], h["status"], _nama_modul(k), fid(h["OE"], 2), fid(h["z"], 2)))
+        else:
+            teks.append("%s (%s %s): tidak ditandai di modul mana pun." % (j["faskes"], j["tipe"], j["kelas"]))
+    return {"teks": " ".join(teks + [_CATATAN]),
+            "angka": [{"label": j["faskes"], "nilai": rp(j["selisih_rupiah_tertimbang"]), "satuan": "tertimbang"} for j, _ in urut],
+            "tautan": [{"label": j["faskes"], "url": j["tautan"]} for j, _ in urut], "sumber": _sumber()}
 
 
 def _det_wilayah(w, met):
@@ -965,7 +1024,8 @@ def jalankan_pipeline(msgs, halaman, model):
         out["dari_kache"] = True
         out["alat"] = [n for n, _ in hasil]
         return out
-    det = None if (_NARASI.search(teks_q.lower()) and not slot.get("faskes")) else jawab_deterministik(slot, hasil)
+    narasi = _NARASI.search(teks_q.lower()) and not (slot.get("faskes") or slot.get("banding"))
+    det = None if narasi else jawab_deterministik(slot, hasil)
     if det:
         det.setdefault("angka", []); det.setdefault("tautan", [])
         det["alat"] = [n for n, _ in hasil]
