@@ -677,7 +677,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px s
 @keyframes coach-pop { from { opacity: 0; transform: translateY(6px) scale(.98) } to { opacity: 1; transform: none } }
 
 /* ---- card Bacaan Tanya AI SIDAK ---- */
-.bacaan { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.bacaan { display: flex; flex-direction: column; gap: 10px; margin-bottom: var(--sp-6); }
 .bacaan-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bacaan-top .eyebrow { letter-spacing: .06em; }
 .bacaan .ros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
@@ -691,8 +691,9 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .bacaan-yl { font-size: 11px; line-height: 1.45; color: var(--grey); }
 .bacaan-skel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); min-height: 96px; }
 .bacaan-skel .bar { height: 88px; border-radius: 10px; margin: 0; }
-.bacaan .att { font-size: 11px; color: var(--grey-2); }
+.bacaan .att { font-size: 11px; color: var(--grey); }
 .bacaan .att .ai { display: inline-flex; align-items: center; gap: 5px; color: var(--amber); font-weight: 600; }
+.bacaan .att .otomatis { font-weight: 600; color: var(--ink); }
 
 /* ---- chip aksi & popover ~Tentang AI saat ini~ ---- */
 .chip.ghost { border-color: transparent; background: var(--bg); color: var(--brand); font-weight: 600; }

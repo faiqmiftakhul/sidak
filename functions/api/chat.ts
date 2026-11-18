@@ -5,6 +5,7 @@
 import { NOMOR, KOTA, inisialisasi, store, muatCadangan } from "../lib/data"
 import { buatClient, ekstrakJson, NASKH_PEKSTRAK, SYSTEM_PROMPT, KEY, type Client } from "../lib/llm"
 import { TOOLS, jalankanAlat } from "../lib/tools"
+import { kumpulkanAngka, periksaAngka, jawabanDitahan } from "../lib/periksa"
 
 const _g = globalThis as any
 
@@ -204,8 +205,9 @@ function pesanKomposisi(teks_q: string, slot: Record<string, any>, hasil: Array<
 }
 
 async function komposisi(model: Client, msgs: Array<Record<string, any>>): Promise<Record<string, any>> {
-  const resp = await model.chat.completions.create({ max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...msgs] as any })
+  const resp = await model.chat.completions.create({ max_tokens: 4000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...msgs] as any })
   const out = ekstrakJson(resp.choices[0]?.message?.content ?? "")
+  if (resp.choices[0]?.finish_reason === "length") out.terpotong = true
   if (!out.teks) throw new Error("komposisi kosong")
   return out
 }
@@ -256,11 +258,19 @@ async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: strin
   let idx_ais = -1
   for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "assistant") { idx_ais = i; break }
   const msgs_baru = [...(idx_ais >= 0 ? [msgs[idx_ais]] : []), { role: "user", content: pesan }]
-  const jawaban = await komposisi(model, msgs_baru)
+  const sumber = kumpulkanAngka(hasil.map(([, r]) => r), teks_q)
+  let jawaban = await komposisi(model, msgs_baru)
+  let salah = periksaAngka(jawaban, sumber)
+  if (salah.length) {
+    const koreksi = `Angka berikut tidak ada di data: ${salah.join(", ")}. Tulis ulang jawaban dalam format JSON yang sama, salin setiap angka persis dari data di atas.`
+    jawaban = await komposisi(model, [...msgs_baru, { role: "assistant", content: JSON.stringify(jawaban) }, { role: "user", content: koreksi }])
+    salah = periksaAngka(jawaban, sumber)
+  }
+  if (salah.length) jawaban = jawabanDitahan(hasil, salah)
   jawaban.angka ??= []; jawaban.tautan ??= []
   jawaban.alat = hasil.map(([n]) => n)
   try { canari(String(jawaban.teks ?? ""), jawabanSebelumnya(msgs)) } catch { /* abaikan */ }
-  simpanKache(kunci, jawaban)
+  if (!jawaban.ditahan && !jawaban.terpotong) simpanKache(kunci, jawaban)
   return jawaban
 }
 
@@ -308,6 +318,7 @@ export async function onRequest(context: { request: Request; env: Record<string,
     }
     const awal_teks = ambilPertanyaan(msgs) || (msgs.length ? msgs[0].content : "")
     const log: string[] = []
+    const hasilAlat: Array<[string, unknown]> = []
     let alat_menyala = false
 
     const selesaiCadangan = async (): Promise<Response> => {
@@ -348,6 +359,7 @@ export async function onRequest(context: { request: Request; env: Record<string,
             let args: Record<string, any>
             try { args = JSON.parse(tc.function.arguments || "{}") } catch { args = {} }
             const r = await jalankanAlat(tc.function.name, args)
+            hasilAlat.push([tc.function.name, r])
             log.push(tc.function.name)
             hasil.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r).slice(0, 60000) })
           }
@@ -356,7 +368,9 @@ export async function onRequest(context: { request: Request; env: Record<string,
           continue
         }
         const teks = seg.content ?? ""
-        const out = ekstrakJson(teks)
+        let out = ekstrakJson(teks)
+        const salah = periksaAngka(out, kumpulkanAngka(hasilAlat.map(([, r]) => r), awal_teks))
+        if (salah.length) out = jawabanDitahan(hasilAlat, salah)
         out.angka ??= []; out.tautan ??= []
         out.alat = [...log]
         return Response.json(out)

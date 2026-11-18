@@ -258,6 +258,51 @@ def uji_luring(cetak=True):
     assert "selisih tertimbang terbesar" in kartu["text"] and "O/E" not in kartu["text"], "T9: %s" % kartu["text"]
     assert "—" not in kartu["text"] + (kartu["isi"] or ""), "T9: em dash di kartu digest"
 
+    # T11 - pemeriksa angka: kasus nyata dari deploy (Rp 24.500.279 vs data Rp 245.005.279)
+    kartu_rs = main.jelaskan_temuan("RS-31595", "severity")
+    sumber = main.kumpulkan_angka(kartu_rs, "Kenapa RS-31595 ditandai?")
+    benar = ("RS-31595 ditandai pada Modul #4: O/E 1,461 (1.46), z 6,19, 145 vs 99,2 kejadian wajar dari 670 klaim, "
+             "selisih 45,8 kasus senilai Rp 245.005.279 sampel atau Rp 18,4 M tertimbang; 46% di atas wajar. "
+             "Penyumbang J-4-14. Periode 2024, ambang O/E 1,05 dan z 1,96.")
+    assert main.periksa_angka({"teks": benar}, sumber) == [], main.periksa_angka({"teks": benar}, sumber)
+    assert main.periksa_angka({"teks": "Selisih Rp 24.500.279 pada sampel."}, sumber) == ["Rp 24.500.279"], "T11: angka salah lolos"
+    assert main.periksa_angka({"teks": "ok", "angka": [{"label": "O/E", "nilai": "2,46"}]}, sumber) == ["2,46"], "T11: angka[] tidak diperiksa"
+
+    # T12 - JSON terpotong: tampilkan teks sampai kalimat utuh terakhir, tanpa kurung kurawal mentah
+    j12 = main.ekstrak_json('{"teks": "RS-31595 ditandai karena O/E 1,46. Rekan sebaya berada dalam rent')
+    assert j12["teks"] == "RS-31595 ditandai karena O/E 1,46." and j12.get("terpotong"), "T12: %r" % j12
+    j12b = main.ekstrak_json('{"teks": "Jawaban \\"lengkap\\".", "angka": [{"label": "x", "ni')
+    assert j12b["teks"] == 'Jawaban "lengkap".', "T12: %r" % j12b
+
+    # T13 - angka salah: satu kali koreksi; bila tetap salah, jawaban ditahan dan tidak di-cache
+    class StubAngka(ModelStub):
+        def __init__(self, urutan):
+            super().__init__(); self.urutan = list(urutan)
+
+        @property
+        def chat(self):
+            stub = self
+
+            class C:
+                completions = None
+
+                def create(self, **kw):
+                    sysc = [m["content"] for m in kw["messages"] if m["role"] == "system"]
+                    if sysc and "Ekstrak slot" in sysc[0]:
+                        return ModelStub._Res(json.dumps(main.slot_heuristik(sysc[0].split("Pertanyaan: ", 1)[-1])))
+                    return ModelStub._Res(json.dumps({"teks": stub.urutan.pop(0), "angka": [], "tautan": []}))
+            c = C(); c.completions = c
+            return c
+
+    q13 = "Kenapa RS-31595 ditandai?"
+    main.KACHE_JAWABAN.clear()
+    out = main.jalankan_pipeline([{"role": "user", "content": q13}], "/", StubAngka(["Selisih Rp 24.500.279.", "Selisih Rp 245.005.279."]))
+    assert out["teks"] == "Selisih Rp 245.005.279." and not out.get("ditahan"), "T13: koreksi tidak dipakai: %r" % out
+    main.KACHE_JAWABAN.clear()
+    out = main.jalankan_pipeline([{"role": "user", "content": q13}], "/", StubAngka(["Rp 24.500.279.", "Rp 24.500.279."]))
+    assert out.get("ditahan") and "24.500.279" not in out["teks"] and out["tautan"], "T13: angka salah tetap tampil: %r" % out
+    assert not main.KACHE_JAWABAN, "T13: jawaban ditahan ikut di-cache"
+
     # T10 - SPA tidak menyajikan berkas di luar web/dist
     if hasattr(main, "spa"):
         for jalur in ("/etc/passwd", "../api/main.py", "%2e%2e/api/main.py"):
@@ -268,7 +313,7 @@ def uji_luring(cetak=True):
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T10 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T13 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):

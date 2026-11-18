@@ -159,13 +159,33 @@ export function buatClient(): Client {
 
 export function ekstrakJson(teks: string): Record<string, any> {
   const a = teks.indexOf("{")
-  if (a === -1) return { teks: teks.trim(), angka: [], tautan: [] }
   const b = teks.lastIndexOf("}")
-  if (b < a) return { teks: teks.trim(), angka: [], tautan: [] }
-  try {
-    const j = JSON.parse(teks.slice(a, b + 1))
-    return j && typeof j === "object" ? j : { teks: teks.trim(), angka: [], tautan: [] }
-  } catch {
-    return { teks: teks.trim(), angka: [], tautan: [] }
+  if (a !== -1 && b > a) {
+    try {
+      const j = JSON.parse(teks.slice(a, b + 1))
+      if (j && typeof j === "object") return j
+    } catch { /* coba teks parsial */ }
   }
+  return teksParsial(teks) ?? { teks: teks.trim(), angka: [], tautan: [] }
+}
+
+// JSON model yang terpotong: ambil isi "teks" saja agar kurung kurawal mentah tidak tampil ke pengguna.
+export function teksParsial(raw: string): Record<string, any> | null {
+  const m = /"teks"\s*:\s*"/.exec(raw ?? "")
+  if (!m) return null
+  const s = raw.slice(m.index + m[0].length)
+  let isi = "", i = 0, tutup = false
+  while (i < s.length) {
+    if (s[i] === "\\" && i + 1 < s.length) { isi += s.slice(i, i + 2); i += 2; continue }
+    if (s[i] === '"') { tutup = true; break }
+    isi += s[i++]
+  }
+  let t: string
+  try { t = JSON.parse('"' + isi.replace(/\\$/, "") + '"') } catch { return null }
+  if (!tutup) {
+    const akhir = Math.max(t.lastIndexOf(". "), t.lastIndexOf(".\n"), t.endsWith(".") ? t.length - 1 : -1)
+    t = akhir > 0 ? t.slice(0, akhir + 1) : ""
+  }
+  t = t.trim()
+  return t ? { teks: t, angka: [], tautan: [], terpotong: true } : null
 }

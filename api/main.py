@@ -384,12 +384,111 @@ def jalankan_alat(name, args):
 
 def ekstrak_json(teks):
     m = re.search(r"\{.*\}", teks, re.S)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            pass
+    parsial = _teks_parsial(teks)
+    if parsial is not None:
+        return parsial
+    return {"teks": teks.strip(), "angka": [], "tautan": []}
+
+
+def _teks_parsial(raw):
+    """JSON model yang terpotong: ambil isi "teks" saja agar kurung kurawal mentah tidak tampil ke pengguna."""
+    m = re.search(r'"teks"\s*:\s*"', raw or "")
     if not m:
-        return {"teks": teks.strip(), "angka": [], "tautan": []}
+        return None
+    s, isi, i, tutup = raw[m.end():], [], 0, False
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s):
+            isi.append(s[i:i + 2]); i += 2; continue
+        if s[i] == '"':
+            tutup = True
+            break
+        isi.append(s[i]); i += 1
     try:
-        return json.loads(m.group(0))
+        t = json.loads('"%s"' % "".join(isi).rstrip("\\"))
     except Exception:
-        return {"teks": teks.strip(), "angka": [], "tautan": []}
+        return None
+    if not tutup:
+        akhir = max(t.rfind(". "), t.rfind(".\n"), t.rfind(".") if t.endswith(".") else -1)
+        t = t[:akhir + 1] if akhir > 0 else ""
+    t = t.strip()
+    return {"teks": t, "angka": [], "tautan": [], "terpotong": True} if t else None
+
+
+# ------------------------------------------------- pemeriksaan angka jawaban
+# Angka di jawaban model wajib ada di hasil alat. Bilangan bulat kecil, tahun,
+# dan kode (RS-31595, #4, J-4-14) tidak diperiksa.
+_RE_ANGKA = re.compile(
+    r"(?<![\w\-#/.,])(Rp\s?)?(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?)(\s?(?:juta|jt|miliar|M|triliun|T|%))?(?![\w\-])")
+_KALI = {"jt": 1e6, "juta": 1e6, "M": 1e9, "miliar": 1e9, "T": 1e12, "triliun": 1e12}
+_KONSTANTA = {0.0, 1.0, 1.05, 1.2, 1.96, 7.0, 30.0, 100.0}
+
+
+def kumpulkan_angka(*sumber):
+    """Semua bilangan di hasil alat (dan pertanyaan), termasuk yang tertulis di dalam string."""
+    vals = set(_KONSTANTA)
+
+    def jalan(x):
+        if isinstance(x, bool):
+            return
+        if isinstance(x, (int, float)):
+            vals.add(float(x))
+        elif isinstance(x, dict):
+            for v in x.values():
+                jalan(v)
+        elif isinstance(x, (list, tuple)):
+            for v in x:
+                jalan(v)
+        elif isinstance(x, str):
+            for t in re.findall(r"\d+(?:\.\d+)?", x):
+                vals.add(float(t))
+            for _, n, u in _RE_ANGKA.findall(x):
+                vals.add(_nilai(n, u.strip()))
+    for s in sumber:
+        jalan(s)
+    return vals
+
+
+def _nilai(n, unit):
+    return float(n.replace(".", "").replace(",", ".")) * _KALI.get(unit, 1.0)
+
+
+def periksa_angka(jawaban, sumber):
+    """Daftar angka di teks/angka[] jawaban yang tidak dapat ditelusuri ke sumber."""
+    teks = [str(jawaban.get("teks") or "")] + [str(a.get("nilai") or "") for a in (jawaban.get("angka") or [])
+                                               if isinstance(a, dict)]
+    salah = []
+    for t in teks:
+        for m in _RE_ANGKA.finditer(t):
+            rp_, n, unit = m.group(1), m.group(2), (m.group(3) or "").strip()
+            kali = _KALI.get(unit, 1.0)
+            desimal = len(n.split(",")[1]) if "," in n else 0
+            tafsir = [(_nilai(n, unit), desimal)]
+            # "1.461" bisa ribuan gaya Indonesia atau desimal gaya Inggris; terima bila salah satunya cocok.
+            if "," not in n and n.count(".") == 1:
+                tafsir.append((float(n) * kali, len(n.split(".")[1])))
+            if not rp_ and not unit and all(d == 0 for _, d in tafsir) and (tafsir[0][0] < 100 or 1900 <= tafsir[0][0] <= 2100):
+                continue
+            calon = list(sumber) + ([s * 100 for s in sumber] + [(s - 1) * 100 for s in sumber] if unit == "%" else [])
+            if not any(abs(v - s) <= 0.5 * 10 ** -d * kali + 1e-9 for v, d in tafsir for s in calon):
+                salah.append(m.group(0).strip())
+    return salah
+
+
+def jawaban_ditahan(hasil, salah):
+    tautan = []
+    for _, r in hasil:
+        u = r.get("tautan") if isinstance(r, dict) else None
+        if isinstance(u, str) and u.startswith("/") and u not in [t["url"] for t in tautan]:
+            tautan.append({"label": "Buka halaman terkait", "url": u})
+    logger.warning("jawaban ditahan, angka tak tertelusur: %s", salah)
+    return {"teks": "Angka pada jawaban otomatis tidak cocok dengan data, jadi jawabannya tidak ditampilkan. "
+                    "Angka resminya ada di halaman terkait.",
+            "angka": [], "tautan": tautan[:2], "ditahan": True}
 
 
 # ------------------------------------------------- pemahaman pertanyaan (slot)
@@ -611,9 +710,11 @@ def buat_model():
 
 def komposisi(model, msgs):
     """Balasan final: satu panggilan, tanpa tools, mengikuti kontrak JSON."""
-    resp = model.chat.completions.create(model=MODEL, max_tokens=2000,
+    resp = model.chat.completions.create(model=MODEL, max_tokens=4000,
                                          messages=[{"role": "system", "content": SYSTEM}] + list(msgs))
     out = ekstrak_json(resp.choices[0].message.content or "")
+    if getattr(resp.choices[0], "finish_reason", None) == "length":
+        out["terpotong"] = True
     if not out.get("teks"):
         raise RuntimeError("komposisi kosong")
     return out
@@ -660,14 +761,25 @@ def jalankan_pipeline(msgs, halaman, model):
     msgs_baru = msgs[idx_ais:] if idx_ais >= 0 else list(msgs)
     msgs_baru = list(msgs_baru)
     msgs_baru[-1] = {"role": "user", "content": pesan}
+    sumber = kumpulkan_angka([r for _, r in hasil], teks_q)
     jawaban = komposisi(model, msgs_baru)
+    salah = periksa_angka(jawaban, sumber)
+    if salah:
+        koreksi = ("Angka berikut tidak ada di data: %s. Tulis ulang jawaban dalam format JSON yang sama, "
+                   "salin setiap angka persis dari data di atas." % ", ".join(salah))
+        jawaban = komposisi(model, msgs_baru + [{"role": "assistant", "content": json.dumps(jawaban, ensure_ascii=False)},
+                                                {"role": "user", "content": koreksi}])
+        salah = periksa_angka(jawaban, sumber)
+    if salah:
+        jawaban = jawaban_ditahan(hasil, salah)
     jawaban.setdefault("angka", []); jawaban.setdefault("tautan", [])
     jawaban["alat"] = [n for n, _ in hasil]
     try:
         canari(jawaban.get("teks"), _jawaban_sebelumnya(msgs))
     except Exception:
         pass
-    simpan_kache(kunci, jawaban)
+    if not (jawaban.get("ditahan") or jawaban.get("terpotong")):
+        simpan_kache(kunci, jawaban)
     return jawaban
 
 
@@ -852,6 +964,7 @@ def chat(req: Chat):
         msgs[-1] = {"role": "user", "content": msgs[-1]["content"] + f"\n\n(konteks: pengguna sedang membuka halaman {req.halaman})"}
     awal_teks = ambil_pertanyaan(msgs) or (msgs[0]["content"] if msgs else "")
     log = []
+    hasil_alat = []
     alat_menyala = False
 
     def selesai_dengan_cadangan():
@@ -904,6 +1017,7 @@ def chat(req: Chat):
                 except Exception:
                     args = {}
                 r = jalankan_alat(tc.function.name, args)
+                hasil_alat.append((tc.function.name, r))
                 log.append(tc.function.name)
                 hasil.append({"role": "tool", "tool_call_id": tc.id,
                               "content": json.dumps(r, ensure_ascii=False, default=str)[:60000]})
@@ -912,6 +1026,9 @@ def chat(req: Chat):
             continue
         teks = seg.content or ""
         out = ekstrak_json(teks)
+        salah = periksa_angka(out, kumpulkan_angka([r for _, r in hasil_alat], awal_teks))
+        if salah:
+            out = jawaban_ditahan(hasil_alat, salah)
         out.setdefault("angka", []); out.setdefault("tautan", [])
         out["alat"] = list(log)
         return out

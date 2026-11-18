@@ -11,7 +11,7 @@ import { INFO, KOTA, MODUL, Modul, aktif, num, oe, rp, useData } from '../lib/da
 
 interface Minat { id: string; teks: string; link: string; isi: string | null }
 
-const tglRingkas = () => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })
+const tglRingkas = (detik?: number) => (detik ? new Date(detik * 1000) : new Date()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })
 
 export default function Beranda() {
   const { ring, faskes, kab } = useData()
@@ -26,6 +26,8 @@ export default function Beranda() {
   const bulanTerakhir = ring.tren[m].slice(-3)
   const oeTerakhir = bulanTerakhir.reduce((s, r) => s + r.O, 0) / Math.max(1e-9, bulanTerakhir.reduce((s, r) => s + r.E, 0))
   const [minat, setMinat] = useState<Minat[] | null>(null)
+  // deterministik = kartu dirangkai kode dari template, bukan ditulis model AI.
+  const [asal, setAsal] = useState<{ ai: boolean; waktu?: number }>({ ai: false })
   useEffect(() => {
     let live = true
     fetch('/api/ai/digest?scope=' + encodeURIComponent(KOTA))
@@ -36,6 +38,7 @@ export default function Beranda() {
           .map((g: Record<string, unknown>, i: number) => ({ id: String(g.id ?? i), teks: String(g.text ?? ''), link: String(g.link ?? '/'), isi: g.isi ? String(g.isi) : null }))
           .filter((x: Minat) => x.teks.trim())
         setMinat(list)
+        setAsal({ ai: d.deterministik === false, waktu: typeof d.generated_at === 'number' ? d.generated_at : undefined })
         if (list.length > 0) window.dispatchEvent(new CustomEvent('sidak:digest'))
       })
       .catch(() => { if (live) setMinat([]) })
@@ -70,8 +73,10 @@ export default function Beranda() {
             ))}
           </div>
           <div className="att">
-            <span className="ai"><Sparkle size={12} /> Dihasilkan Tanya AI SIDAK</span>
-            <span> · fakta dari data sampel ±1% · {tglRingkas()}</span>
+            {asal.ai
+              ? <span className="ai"><Sparkle size={12} /> Dihasilkan Tanya AI SIDAK</span>
+              : <span className="otomatis">Dirangkum otomatis dari indikator SIDAK</span>}
+            <span> · fakta dari data sampel ±1% · {tglRingkas(asal.waktu)}</span>
           </div>
         </div>
       )}
