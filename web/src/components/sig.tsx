@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { mdiAlertOutline, mdiBookOpenVariant, mdiCheckCircleOutline, mdiChevronDown, mdiContentCopy, mdiEyeOutline, mdiInformationOutline } from '@mdi/js'
-import { Bulan, STATUS, Status, StatusAudit, num, oe, rp } from '../lib/data'
+import { Bulan, STATUS, Status, num, oe, rp } from '../lib/data'
 import { Icon } from './Icon'
 
 const IKON_STATUS: Record<Status, string> = {
@@ -112,22 +112,6 @@ export function Spark({ rows }: { rows: Bulan[] }) {
       <line x1={P} x2={W - P} y1={y(1)} y2={y(1)} stroke="var(--grey-2)" strokeWidth={1} strokeDasharray="3 3" />
       <polyline points={pts} fill="none" stroke="var(--brand)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  )
-}
-
-const TAHAP: { nilai: StatusAudit; label: string }[] = [
-  { nilai: 'belum', label: 'Belum' },
-  { nilai: 'sedang', label: 'Sedang' },
-  { nilai: 'selesai', label: 'Selesai' },
-]
-export const LABEL_AUDIT: Record<StatusAudit, string> = TAHAP.reduce((o, t) => ({ ...o, [t.nilai]: t.label }), {} as Record<StatusAudit, string>)
-
-/** Stepper progres audit Belum → Sedang → Selesai. */
-export function Progres({ nilai, fb, ringkas }: { nilai: StatusAudit; fb: (s: StatusAudit) => void; ringkas?: boolean }) {
-  return (
-    <span className={'step' + (ringkas ? ' ringkas' : '')} role="group" aria-label="Progres audit">
-      {TAHAP.map((t, i) => <button key={t.nilai} type="button" className={nilai === t.nilai ? 'on s' + i : ''} aria-pressed={nilai === t.nilai} onClick={() => fb(t.nilai)}>{t.label}</button>)}
-    </span>
   )
 }
 

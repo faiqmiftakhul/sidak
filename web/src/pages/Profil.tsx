@@ -6,10 +6,10 @@ import KpiCard from '../components/KpiCard'
 import { Icon } from '../components/Icon'
 import { Sparkle } from '../components/Sparkle'
 import { useAi } from '../components/ai'
-import { DotPlot, FaskesCode, LABEL_AUDIT, OEChip, Progres, RupiahText, StatusPill } from '../components/sig'
-import { AKTIVITAS_KEY, CATATAN_KEY, Faskes, INFO, KOTA, MODUL, Modul, STATUS, StatusAudit, TEMUAN_KEY, ambilJSON, bacaStatusAudit, judulKab, num, oe, pct, rp, sebaya, simpanJSON, simpanStatusAudit, useData } from '../lib/data'
+import { DotPlot, FaskesCode, OEChip, RupiahText, StatusPill } from '../components/sig'
+import { DialogSelesai, KartuTL } from '../components/TindakLanjut'
+import { AKTIVITAS_KEY, CATATAN_KEY, Faskes, INFO, KOTA, LABEL_TL, MODUL, Modul, STATUS, StatusAudit, ambilJSON, bacaKesimpulan, bacaStatusAudit, bacaWaktuTL, judulKab, num, oe, pct, rp, sebaya, simpanJSON, ubahTindakLanjut, useData } from '../lib/data'
 
-const OPSI_TEMUAN = ['Belum ada kesimpulan', 'Dokumentasi medis tidak lengkap', 'Kode perlu klarifikasi', 'Proses layanan perlu perbaikan', 'Tidak ditemukan masalah setelah pemeriksaan']
 
 const fmtTgl = (t: number) => new Date(t).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 
@@ -22,6 +22,8 @@ export default function Profil() {
   const [audit, setAuditS] = useState<StatusAudit>(bacaStatusAudit()[id ?? ''] ?? 'belum')
   const [catatan, setCatatan] = useState('')
   const [temuan, setTemuan] = useState('')
+  const [waktuTL, setWaktuTL] = useState<number | null>(null)
+  const [dialogTL, setDialogTL] = useState(false)
   const [akt, setAkt] = useState<{ t: number; s: string }[]>([])
   const railRef = useRef<HTMLDivElement>(null)
 
@@ -29,7 +31,8 @@ export default function Profil() {
     if (!f) return
     setAuditS(bacaStatusAudit()[f.id] ?? 'belum')
     setCatatan(String(ambilJSON(CATATAN_KEY)[f.id] ?? ''))
-    setTemuan(String(ambilJSON(TEMUAN_KEY)[f.id] ?? ''))
+    setTemuan(bacaKesimpulan(f.id))
+    setWaktuTL(bacaWaktuTL(f.id))
     const a = ambilJSON(AKTIVITAS_KEY)[f.id]; setAkt(Array.isArray(a) ? a : [])
   }, [f?.id])
 
@@ -49,22 +52,20 @@ export default function Profil() {
   const peersTop = useMemo(() => (f && m ? sebaya(faskes, f, m) : []), [faskes, f, m])
   const ci: [number, number] | null = h && h.E > 0 && h.O > 0 ? [Math.max(0, (h.O - 1.96 * Math.sqrt(h.O)) / h.E), (h.O + 1.96 * Math.sqrt(h.O)) / h.E] : null
 
-  const catat = (s: string) => {
-    const n = [...akt, { t: Date.now(), s }].slice(-24)
-    setAkt(n); const o = ambilJSON(AKTIVITAS_KEY); o[f!.id] = n; simpanJSON(AKTIVITAS_KEY, o)
+  // Semua perubahan lewat ubahTindakLanjut (sama dengan Antrean), lalu state halaman dibaca ulang.
+  const segarkanTL = () => {
+    if (!f) return
+    setAuditS(bacaStatusAudit()[f.id] ?? 'belum'); setTemuan(bacaKesimpulan(f.id)); setWaktuTL(bacaWaktuTL(f.id))
+    setCatatan(String(ambilJSON(CATATAN_KEY)[f.id] ?? '')); const a = ambilJSON(AKTIVITAS_KEY)[f.id]; setAkt(Array.isArray(a) ? a : [])
   }
-  const setAudit = (s: StatusAudit) => {
-    if (s === audit || !f) return
-    setAuditS(s); simpanStatusAudit(f.id, s); catat(`progres audit → ${LABEL_AUDIT[s]}`)
+  const aksiTL = (ke: StatusAudit) => {
+    if (!f) return
+    if (ke === 'selesai') { setDialogTL(true); return }
+    ubahTindakLanjut(f.id, ke); segarkanTL()
   }
   const ubahCatatan = (v: string) => {
     setCatatan(v); if (!f) return
     const o = ambilJSON(CATATAN_KEY); if (v === '') delete o[f.id]; else o[f.id] = v; simpanJSON(CATATAN_KEY, o)
-  }
-  const ubahTemuan = (v: string) => {
-    setTemuan(v); if (!f) return
-    const o = ambilJSON(TEMUAN_KEY); if (!v) delete o[f.id]; else o[f.id] = v; simpanJSON(TEMUAN_KEY, o)
-    if (v) catat(`kesimpulan → ${v}`)
   }
 
   function ekspor() {
@@ -81,8 +82,8 @@ export default function Profil() {
       g.push(`  selisih sampel=${rp(x.rupiah)} | tertimbang≈${rp(x.rupiah_tertimbang)}`)
     })
     g.push('')
-    g.push('Status audit: ' + LABEL_AUDIT[audit])
-    g.push('Kesimpulan sementara: ' + (temuan || '-'))
+    g.push('Tindak lanjut: ' + LABEL_TL[audit])
+    g.push('Kesimpulan: ' + (temuan || '-'))
     g.push('Catatan: ' + (catatan.replace(/\n/g, ' | ') || '-'))
     g.push('Aktivitas:')
     akt.slice().reverse().forEach(x => g.push('  - ' + fmtTgl(x.t) + ' ' + x.s))
@@ -105,7 +106,10 @@ export default function Profil() {
         <div className="hbar" style={{ justifyContent: 'flex-end' }}>
           {f && <button className="chip ghost" type="button" onClick={() => buka({ konteks: `${f.label} · ${f.kab}`, pertanyaan: `Apa temuan utama untuk ${f.label}?` })}><Sparkle size={13} /> Tanya AI tentang {f.id}</button>}
           {moduls.map(k => <StatusPill key={k} s={f.modul[k]!.status} awalan={'#' + INFO[k].nomor} pendek />)}
-          <button className="btn primary" type="button" onClick={() => railRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{audit === 'belum' ? 'Mulai audit' : 'Lanjutkan audit'}</button>
+          <button className="btn primary" type="button" onClick={() => {
+            if (audit === 'belum') aksiTL('sedang'); else if (audit === 'sedang') aksiTL('selesai')
+            railRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}>{audit === 'belum' ? 'Mulai pemeriksaan' : audit === 'sedang' ? 'Tandai selesai…' : 'Lihat tindak lanjut'}</button>
         </div>
       </div>
 
@@ -173,15 +177,8 @@ export default function Profil() {
           <div className="aular-box">
             <div className="card">
               <h3>Tindak lanjut</h3>
-              <Progres nilai={audit} fb={setAudit} />
-              <div className="hint">Disimpan di peramban ini (demo). Di pilot, masuk ke sistem manajemen kasus audit cabang.</div>
-            </div>
-            <div className="card">
-              <h3>Kesimpulan sementara</h3>
-              <select value={temuan} onChange={e => ubahTemuan(e.target.value)} aria-label="Kesimpulan sementara">
-                {OPSI_TEMUAN.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-              <div className="hint">Pilihan netral — bukan label pelanggaran.</div>
+              <KartuTL status={audit} kesimpulan={temuan} waktu={waktuTL} onAksi={aksiTL} />
+              <div className="hint" style={{ marginTop: 12 }}>Tersimpan di perangkat ini (demo). Di pilot, tersimpan bersama untuk tim cabang.</div>
             </div>
             <div className="card">
               <h3>Catatan audit</h3>
@@ -196,6 +193,9 @@ export default function Profil() {
           </div>
         </div>
       </div>
+      {dialogTL && f && <DialogSelesai subjudul={`${f.label} · ${f.kelas_pendek} · ${f.milik}`} ubah={audit === 'selesai'}
+        kesimpulanAwal={temuan} catatanAwal={catatan} onBatal={() => setDialogTL(false)}
+        onSimpan={(kes, cat) => { ubahTindakLanjut(f.id, 'selesai', { kesimpulan: kes, catatan: cat }); setDialogTL(false); segarkanTL() }} />}
     </>
   )
 }

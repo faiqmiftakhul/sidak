@@ -4,10 +4,11 @@ import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChar
 import { mdiSigma } from '@mdi/js'
 import { Chip, Pager, Peringkat, Pilih, Tren, ZTeks } from '../components/Common'
 import KpiCard from '../components/KpiCard'
-import { OEChip, Progres, RupiahText, Spark, StatusPill } from '../components/sig'
+import { OEChip, RupiahText, Spark, StatusPill } from '../components/sig'
+import { LabelTL } from '../components/TindakLanjut'
 import { Sparkle } from '../components/Sparkle'
 import { useAi } from '../components/ai'
-import { Faskes, INFO, KOTA, Modul, STATUS, bacaStatusAudit, num, oe, pct, rp, simpanStatusAudit, useData } from '../lib/data'
+import { Faskes, INFO, KOTA, Modul, STATUS, bacaKesimpulan, bacaStatusAudit, num, oe, pct, rp, useData } from '../lib/data'
 
 const DEF: Record<Modul, { apa: string; kejadian: string; wajar: string; putih: string; sorot: string }> = {
   rujukan: {
@@ -174,8 +175,8 @@ export default function ModulPage() {
       <div className="card" style={{ padding: 0 }}>
         <div className="table-scroll">
           <table className="t">
-            <thead><tr><th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Kelas</th><th className="num">Volume</th><th className="num">O/E</th><th className="num">{TH_Z}</th><th>Tren 6 bln</th><th className="num">≈ Selisih tbg</th><th>Status</th><th>Progres</th></tr></thead>
-            <tbody>{tTable.map((f: Faskes) => { const h = f.modul[m]!; return <tr key={f.id} className={'tr-' + h.status}><td><Link to={'/faskes/' + f.id}><b>{f.label}</b></Link></td>{wil === 'jateng' && <td>{f.kab}</td>}<td>{f.kelas_pendek}</td><td className="num">{num(h.n)}</td><td className="num"><OEChip v={h.OE} n={h.n} st={h.status} /></td><td className="num"><ZTeks z={h.z} /></td><td><Spark rows={f.bulanan[m] ?? []} /></td><td className="num"><RupiahText v={h.rupiah_tertimbang} /></td><td><StatusPill s={h.status} /></td><td><Progres nilai={audit[f.id] ?? 'belum'} fb={s => { simpanStatusAudit(f.id, s); setVersi(v => v + 1) }} /></td></tr> })}</tbody>
+            <thead><tr><th>Faskes</th>{wil === 'jateng' && <th>Kab/Kota</th>}<th>Kelas</th><th className="num">Volume</th><th className="num">O/E</th><th className="num">{TH_Z}</th><th>Tren 6 bln</th><th className="num">≈ Selisih tbg</th><th>Status</th><th>Tindak lanjut</th></tr></thead>
+            <tbody>{tTable.map((f: Faskes) => { const h = f.modul[m]!; return <tr key={f.id} className={'tr-' + h.status}><td><Link to={'/faskes/' + f.id}><b>{f.label}</b></Link></td>{wil === 'jateng' && <td>{f.kab}</td>}<td>{f.kelas_pendek}</td><td className="num">{num(h.n)}</td><td className="num"><OEChip v={h.OE} n={h.n} st={h.status} /></td><td className="num"><ZTeks z={h.z} /></td><td><Spark rows={f.bulanan[m] ?? []} /></td><td className="num"><RupiahText v={h.rupiah_tertimbang} /></td><td><StatusPill s={h.status} /></td><td>{h.status === 'perhatian' || h.status === 'diamati' ? <LabelTL status={audit[f.id] ?? 'belum'} kesimpulan={bacaKesimpulan(f.id)} /> : <span className="hint" aria-label="Tidak perlu tindak lanjut">–</span>}</td></tr> })}</tbody>
           </table>
         </div>
         {tTable.length > 0 && <Pager total={urut.length} page={page} per={per} ubah={setPage} ubahPer={p => { setPer(p); setPage(1) }} />}

@@ -124,3 +124,46 @@ export const TAB_KEY = 'sidak_antrean_tab'
 
 export const ambilJSON = (k: string): Record<string, any> => { try { return JSON.parse(localStorage.getItem(k) || '{}') } catch { return {} } }
 export const simpanJSON = (k: string, o: Record<string, any>) => { try { localStorage.setItem(k, JSON.stringify(o)) } catch { /* abaikan */ } }
+
+/* ---- Tindak lanjut audit (per faskes): status, kesimpulan, waktu, riwayat ---- */
+export const TL_WAKTU_KEY = 'sidak_tl_waktu'
+export const LABEL_TL: Record<StatusAudit, string> = { belum: 'Belum diperiksa', sedang: 'Sedang diperiksa', selesai: 'Selesai' }
+export const OPSI_KESIMPULAN = ['Dokumentasi medis tidak lengkap', 'Kode perlu klarifikasi', 'Proses layanan perlu perbaikan', 'Tidak ditemukan masalah setelah pemeriksaan']
+/** Aksi yang tersedia dari tiap status. "selesai" selalu lewat dialog kesimpulan. */
+export const AKSI_TL: Record<StatusAudit, { ke: StatusAudit; label: string; ket?: string }[]> = {
+  belum: [{ ke: 'sedang', label: 'Mulai pemeriksaan' }, { ke: 'selesai', label: 'Tandai selesai…', ket: 'Langsung isi kesimpulan' }],
+  sedang: [{ ke: 'selesai', label: 'Tandai selesai…', ket: 'Pilih kesimpulan' }, { ke: 'belum', label: 'Batalkan pemeriksaan' }],
+  selesai: [{ ke: 'selesai', label: 'Ubah kesimpulan…' }, { ke: 'sedang', label: 'Buka kembali', ket: 'Kembali ke sedang diperiksa' }],
+}
+
+/** Kesimpulan tersimpan; nilai bawaan lama "Belum ada kesimpulan" dianggap kosong. */
+export const bacaKesimpulan = (id: string): string => { const v = String(ambilJSON(TEMUAN_KEY)[id] ?? ''); return OPSI_KESIMPULAN.includes(v) ? v : '' }
+export const bacaWaktuTL = (id: string): number | null => { const v = ambilJSON(TL_WAKTU_KEY)[id]; return typeof v === 'number' ? v : null }
+
+export interface SnapshotTL { st: StatusAudit; kes: unknown; cat: unknown; waktu: unknown; akt: unknown }
+const ambilAtauHapus = (k: string, id: string, v: unknown) => { const o = ambilJSON(k); if (v === undefined) delete o[id]; else o[id] = v; simpanJSON(k, o) }
+export const snapshotTL = (id: string): SnapshotTL => ({
+  st: bacaStatusAudit()[id] ?? 'belum', kes: ambilJSON(TEMUAN_KEY)[id], cat: ambilJSON(CATATAN_KEY)[id], waktu: ambilJSON(TL_WAKTU_KEY)[id], akt: ambilJSON(AKTIVITAS_KEY)[id],
+})
+/** Urungkan: kembalikan persis keadaan sebelum aksi, termasuk riwayat. */
+export function pulihkanTL(id: string, s: SnapshotTL) {
+  simpanStatusAudit(id, s.st)
+  ambilAtauHapus(TEMUAN_KEY, id, s.kes); ambilAtauHapus(CATATAN_KEY, id, s.cat); ambilAtauHapus(TL_WAKTU_KEY, id, s.waktu); ambilAtauHapus(AKTIVITAS_KEY, id, s.akt)
+}
+export function catatAktivitas(id: string, s: string) {
+  const o = ambilJSON(AKTIVITAS_KEY); const a = Array.isArray(o[id]) ? o[id] : []
+  o[id] = [...a, { t: Date.now(), s }].slice(-24); simpanJSON(AKTIVITAS_KEY, o)
+}
+/** Satu pintu untuk semua perubahan tindak lanjut (Antrean, Profil): status, waktu, kesimpulan, catatan, riwayat. */
+export function ubahTindakLanjut(id: string, ke: StatusAudit, opsi: { kesimpulan?: string; catatan?: string } = {}) {
+  const lama = bacaStatusAudit()[id] ?? 'belum'
+  if (ke === 'selesai' && !opsi.kesimpulan) return
+  simpanStatusAudit(id, ke)
+  if (ke !== lama) { const w = ambilJSON(TL_WAKTU_KEY); w[id] = Date.now(); simpanJSON(TL_WAKTU_KEY, w) }
+  if (opsi.kesimpulan) ambilAtauHapus(TEMUAN_KEY, id, opsi.kesimpulan)
+  if (opsi.catatan !== undefined) ambilAtauHapus(CATATAN_KEY, id, opsi.catatan.trim() ? opsi.catatan : undefined)
+  const s = ke === 'selesai' ? (lama === 'selesai' ? `kesimpulan diubah · ${opsi.kesimpulan}` : `selesai · ${opsi.kesimpulan}`)
+    : ke === 'sedang' ? (lama === 'selesai' ? 'dibuka kembali' : 'pemeriksaan dimulai')
+    : 'pemeriksaan dibatalkan'
+  catatAktivitas(id, s)
+}
