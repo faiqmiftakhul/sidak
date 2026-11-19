@@ -575,33 +575,39 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .logo-an.besar .brand-mark { width: 40px; height: 40px; font-size: 20px; }
 
 .ais { display: flex; gap: 10px; align-items: flex-start; }
-.ais-b { position: relative; flex: 1; min-width: 0; background: #fff; border: 1px solid var(--line-soft); border-radius: 12px; padding: 8px 12px 8px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+.ais-b { position: relative; flex: 1; min-width: 0; background: #fff; border: 1px solid var(--line-soft); border-radius: 12px; padding: 12px 14px 8px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
 .ai-sal { position: absolute; top: 6px; right: 6px; opacity: 0; border: 0; background: transparent; color: var(--grey-2); padding: 4px; border-radius: 6px; cursor: pointer; transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
 .ais:hover .ai-sal { opacity: 1; }
 .ai-sal:hover { background: var(--hover); color: var(--ink); }
 .ai-jawab { font-weight: 650; font-size: 14px; line-height: 1.45; margin: 0 0 4px; color: var(--ink); }
 .ai-jawab .hint { font-weight: 400; }
-.ai-sisa { font-size: 13px; line-height: 1.55; margin: 0 0 8px; color: var(--ink); }
+.ai-sisa { font-size: 13px; line-height: 1.55; margin: 0; color: var(--ink); }
 /* jawaban AI terformat: paragraf terpisah + tabel markdown jadi tabel sungguhan */
 .ai-jawab .ai-paragraf, .ai-sisa .ai-paragraf { margin: 0 0 8px; font-weight: inherit; }
 .ai-jawab .ai-paragraf:last-child, .ai-sisa .ai-paragraf:last-child { margin-bottom: 0; }
-.ai-tabel { margin: 6px 0 10px; font-weight: 400; font-size: 12.5px; width: 100%; }
-.ai-tabel th { font-size: 11px; text-transform: uppercase; letter-spacing: .02em; color: var(--grey); }
+.ai-tabel-wrap { margin: 8px 0 10px; overflow-x: auto; border: 1px solid var(--line-soft); border-radius: 10px; }
+.ai-tabel { margin: 0; font-weight: 400; font-size: 12.5px; width: 100%; }
+.ai-tabel th { font-size: 12px; color: var(--grey); background: var(--bg); padding: 6px 8px; }
+.ai-tabel td { padding: 6px 8px; }
+.ai-tabel td.num, .ai-tabel th.num { white-space: nowrap; }
+.ai-tabel tr:last-child td { border-bottom: 0; }
+.ai-tabel td:first-child { white-space: nowrap; }
+.st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; flex-shrink: 0; }
+.ai-legenda { display: flex; flex-wrap: wrap; gap: 12px; padding: 6px 8px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--grey); }
+.vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .ai-tabel td { font-variant-numeric: tabular-nums; }
 .ai-tabel code { font-size: 11.5px; background: transparent; padding: 0; }
-.ai-jam { display: block; text-align: right; margin-top: 4px; font-size: 10.5px; color: var(--grey-3); }
-.ais-b:hover .ai-jam { opacity: 1; }
-.ai-jam { opacity: 0; transition: opacity var(--t-fast) var(--ease); }
+.ai-jam { margin-left: auto; font-size: 12px; color: var(--grey); font-variant-numeric: tabular-nums; }
 .kode-faskes { color: var(--brand); font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
 .kode-faskes:hover { text-decoration: none; }
 
-.abuk { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; margin: 8px 0; }
+.abuk { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; margin: 10px 0 0; }
 .abuk.dua { grid-template-columns: repeat(2, 1fr); }
-.abuk .ab { background: var(--bg); border: 1px solid var(--line-soft); border-radius: 10px; padding: 8px 8px; }
+.abuk .ab { background: var(--bg); border: 1px solid var(--line-soft); border-radius: 10px; padding: 8px 10px; min-width: 0; }
 .abuk .ab b { display: block; font-size: 15px; color: var(--brand); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.abuk .ab span { font-size: 11px; color: var(--grey); line-height: 1.4; display: block; margin-top: 4px; }
+.abuk .ab span { font-size: 12px; color: var(--grey); line-height: 1.35; display: block; margin-top: 2px; }
 
-.akpj { margin: 8px 0; border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; }
+.akpj { margin: 8px 0; border: 1px solid var(--line-soft); border-radius: 10px; overflow-x: auto; }
 .akpj table.t { font-size: 12px; margin: 0; }
 .akpj table.t th { padding: 8px 8px; }
 .akpj table.t td { padding: 8px 8px; }
@@ -614,10 +620,12 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px s
 .asum a.chip-sumber { font-size: 11px; padding: 4px 8px; border-radius: var(--r-pill); background: var(--brand); color: #fff; white-space: nowrap; transition: background var(--t-fast) var(--ease); }
 .asum a.chip-sumber:hover { background: var(--brand-hover); text-decoration: none; }
 
-.ais-fu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.ais-fu .chip { margin: 0; font-size: 11.5px; }
+.ais-fu { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.ais-fu-lbl { font-size: 12px; color: var(--grey); }
+.ais-fu .chip { margin: 0; max-width: 100%; text-align: left; font-size: 13px; line-height: 1.4; padding: 6px 12px; border-radius: 10px; }
 
 .ais-fb { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-top: 8px; }
+.ais-fb .fb-alasan { width: 100%; }
 .ais-fb > button { display: inline-flex; align-items: center; border: 0; background: transparent; color: var(--grey-2); padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
 .ais-fb > button:hover { background: var(--hover); color: var(--ink); }
 .ais-fb > button.on { color: var(--brand); }
@@ -794,9 +802,12 @@ table.t th button.istilah { border-bottom: 1px dotted var(--grey-2); padding-bot
 .side .mod-no { font-family: var(--font-mono); font-size: 12px; color: var(--brand); }
 
 /* Chat: tautan jawaban berjarak (#7) */
-.ais .tautan { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.ais .tautan a { background: var(--brand); color: #fff; padding: 4px 10px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 600; text-decoration: none; }
-.ais .tautan a:hover { background: var(--brand-hover); }
+/* Jawaban AI: satu gaya tombol tujuan, sumber sebagai teks */
+.ai-aksi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ai-tombol { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: #fff; color: var(--brand); font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.ai-tombol:hover { border-color: var(--brand); background: var(--brand-tint); text-decoration: none; }
+.ai-sumber { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--grey); }
+.ai-sumber .luring { font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--diamati-bg); border: 1px solid var(--diamati); color: var(--diamati); font-weight: 600; }
 
 /* Navigasi HP (#3): header ringkas di atas, menu utama di bawah */
 .top-brand, .botnav { display: none; }
@@ -823,4 +834,6 @@ table.t th button.istilah { border-bottom: 1px dotted var(--grey-2); padding-bot
   .mulai { grid-template-columns: 1fr; padding: var(--sp-4); }
   .mulai-aksi .btn { min-height: 44px; }
   .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .ai-tabel th, .ai-tabel td { padding: 6px 5px; }
+  .ais-b { padding: 12px 10px 8px; }
 }

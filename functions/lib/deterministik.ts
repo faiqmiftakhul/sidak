@@ -5,6 +5,7 @@ import { KOTA, NAMA, NOMOR, STATUS, labelWilayah, rp, store } from "./data"
 
 type J = Record<string, any>
 
+const INFO_PENDEK: Record<string, string> = { rujukan: "Rujukan", severity: "Severity", fragmentasi: "Fragmentasi", readmisi: "Readmisi" }
 const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 const UNIT_VOLUME: Record<string, string> = { rujukan: "kunjungan sakit", fragmentasi: "kunjungan RJTL", severity: "rawat inap", readmisi: "rawat inap" }
 const URUT_LABEL: Record<string, string> = { rupiah_tertimbang: "selisih rupiah tertimbang", rupiah: "selisih rupiah sampel", OE: "O/E", z: "skor z", volume: "volume" }
@@ -139,8 +140,12 @@ async function detDaftar(d: J, hitung: J | undefined, mod: string | null, slot: 
     ? `${fid(hitung.faskes_perlu_perhatian)} faskes di ${lw} berstatus perlu perhatian pada setidaknya satu modul.`
     : `Ada ${fid(d.jumlah_temuan)} temuan berstatus perlu perhatian atau diamati di ${lw}${lingkup}.`
   const urut = ({ oe: "OE", z: "z", count: "volume" } as Record<string, string>)[slot.metric] ?? "rupiah_tertimbang"
-  const tabel = ["| Faskes | Modul | Status | O/E | Selisih tertimbang |", "|---|---|---|---|---|",
-    ...rows.map(x => `| ${x.faskes} | #${x.nomor} ${x.modul} | ${x.status} | ${fid(x.OE, 2)} | ${rp(x.selisih_rupiah_tertimbang)} |`)]
+  // Ringkas agar muat di panel chat: kolom Modul hanya bila barisnya lintas modul, nama modul versi pendek.
+  const tabel = mod || new Set(rows.map(x => x.nomor)).size === 1
+    ? ["| Faskes | Status | O/E | Selisih |", "|---|---|---|---|",
+      ...rows.map(x => `| ${x.faskes} | ${x.status} | ${fid(x.OE, 2)} | ${rp(x.selisih_rupiah_tertimbang)} |`)]
+    : ["| Faskes | Modul | Status | O/E | Selisih |", "|---|---|---|---|---|",
+      ...rows.map(x => `| ${x.faskes} | #${x.nomor} ${INFO_PENDEK[slugModul(x.nomor)]} | ${x.status} | ${fid(x.OE, 2)} | ${rp(x.selisih_rupiah_tertimbang)} |`)]
   return {
     teks: `${buka} Urutan teratas menurut ${URUT_LABEL[urut]}:\n${tabel.join("\n")}\n${CATATAN}`,
     angka: rows.slice(0, 3).map(x => ({ label: x.faskes, nilai: fid(x.OE, 2), satuan: "O/E" })),

@@ -9,7 +9,7 @@ import SidakMark from './SidakMark'
 import { TentangAI } from './TentangAI'
 import { OEChip, RupiahText, Spark, StatusPill } from './sig'
 import { AiDorongan } from './ai'
-import { Faskes, INFO, KOTA, MODUL, Modul, num, useData } from '../lib/data'
+import { Faskes, INFO, KOTA, MODUL, Modul, STATUS, Status, num, useData } from '../lib/data'
 
 interface Angka { label: string; nilai: string; satuan?: string; sumber?: string }
 interface Tautan { label: string; url: string }
@@ -44,6 +44,16 @@ const KUNCI_FB = 'sidak_chat_fb_v1'
 const KUNCI_W = 'sidak_chat_w'
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+
+/** Saran dianggap mengulang bila >= 60% kata pertanyaan terakhir ada di dalamnya. */
+const mirip = (saran: string, lalu?: string): boolean => {
+  if (!lalu) return false
+  const kata = (x: string) => new Set(x.toLowerCase().match(/[\p{L}\p{N}#]+/gu) ?? [])
+  const a = kata(lalu), b = kata(saran)
+  if (!a.size) return false
+  let sama = 0; a.forEach(w => { if (b.has(w)) sama++ })
+  return sama / a.size >= 0.6
+}
 
 let cadangan: { tanya: string; jawab: Jawaban }[] | null = null
 async function jawabanCadangan(q: string): Promise<Jawaban | null> {
@@ -122,6 +132,7 @@ function TeksBerlink({ teks, faskes, nav }: { teks: string; faskes: Faskes[]; na
   })}</>
 }
 
+const RE_SEL_ANGKA = /^(Rp\s?)?-?[\d.,]+(\s?(jt|M|T|%))?$/
 /* Baris tabel markdown: "| a | b | c |" — pemisah gaya |---|---| dilewati. */
 const adlBarisTabel = (s: string) => /^\s*\|.+\|\s*$/.test(s)
 const pemisahTabel = (s: string) => /^\s*\|[\s:|-]+\|\s*$/.test(s)
@@ -156,11 +167,27 @@ function TeksJawab({ teks, faskes, nav }: { teks: string; faskes: Faskes[]; nav:
       if (baris2.length === 0) return null
       const kepala = selTabel(baris2[0])
       const badan = baris2.slice(1).map(selTabel)
+      // Panel chat sempit: kolom Status dilebur ke kolom pertama sebagai titik warna (+ teks untuk pembaca layar dan legenda).
+      const keStatus = (c: string) => (Object.keys(STATUS) as Status[]).find(x => STATUS[x].label === (c ?? '').trim())
+      const kolSt = kepala.findIndex((h, ci) => h.trim() === 'Status' && badan.length > 0 && badan.every(r => keStatus(r[ci])))
+      const kol = kepala.map((_, ci) => ci).filter(ci => ci !== kolSt)
+      const angkaKol = kepala.map((_, ci) => badan.length > 0 && badan.every(r => RE_SEL_ANGKA.test((r[ci] ?? '').trim())))
+      const ada = kolSt >= 0 ? [...new Set(badan.map(r => keStatus(r[kolSt])!))] : []
       return (
-        <table key={bi} className="t ai-tabel">
-          <thead><tr>{kepala.map((h, hi) => <th key={hi}>{segmen(h, `h${bi}-${hi}`)}</th>)}</tr></thead>
-          <tbody>{badan.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci}>{segmen(c, `c${bi}-${ri}-${ci}`)}</td>)}</tr>)}</tbody>
-        </table>
+        <div key={bi} className="ai-tabel-wrap">
+          <table className="t ai-tabel">
+            <thead><tr>{kol.map(ci => <th key={ci} className={angkaKol[ci] ? 'num' : undefined}>{segmen(kepala[ci], `h${bi}-${ci}`)}</th>)}</tr></thead>
+            <tbody>{badan.map((r, ri) => {
+              const st = kolSt >= 0 ? keStatus(r[kolSt]) : undefined
+              return <tr key={ri}>{kol.map((ci, i) => <td key={ci} className={angkaKol[ci] ? 'num' : undefined}>
+                {i === 0 && st && <span className="st-dot" style={{ background: STATUS[st].warna }} title={STATUS[st].label} aria-hidden="true" />}
+                {segmen(r[ci] ?? '', `c${bi}-${ri}-${ci}`)}
+                {i === 0 && st && <span className="vh">, {STATUS[st].label}</span>}
+              </td>)}</tr>
+            })}</tbody>
+          </table>
+          {ada.length > 0 && <div className="ai-legenda" aria-hidden="true">{ada.map(x => <span key={x}><span className="st-dot" style={{ background: STATUS[x].warna }} />{STATUS[x].label}</span>)}</div>}
+        </div>
       )
     }
     const gabung = b.isi.join('\n')
@@ -180,7 +207,7 @@ function Bukti({ j, faskes, nav }: { j: Jawaban; faskes: Faskes[]; nav: (id: str
     const kecil = baris.filter(r => { const m = r.f && modulTerbesar(r.f); return m && r.f!.modul[m]!.n < 30 })
     return (
       <div className="akpj">
-        {lain.length > 0 && <div className="abuk">{lain.map(x => <div key={x.label} className="ab"><b>{x.nilai}{x.satuan ? ' ' + x.satuan : ''}</b><span>{x.label}</span></div>)}</div>}
+        {lain.length > 0 && <div className="abuk" style={kolomAbuk(lain.length)}>{lain.map(x => <div key={x.label} className="ab"><b>{x.nilai}{x.satuan ? ' ' + x.satuan : ''}</b><span>{x.label}</span></div>)}</div>}
         <table className="t">
           <thead><tr><th>Faskes</th><th>Kelas</th><th>O/E (z)</th><th>≈ Selisih tbg</th><th>Status</th><th>Tren</th></tr></thead>
           <tbody>{baris.map(({ x, f }) => {
@@ -200,15 +227,18 @@ function Bukti({ j, faskes, nav }: { j: Jawaban; faskes: Faskes[]; nav: (id: str
             )
           })}</tbody>
         </table>
-        {kecil.length > 0 && <div className="akai">Volume kecil pada {kecil.length} faskes — pita kepercayaan lebar; cek profil untuk garis CI.</div>}
+        {kecil.length > 0 && <div className="akai">Volume kecil pada {kecil.length} faskes, jadi pita kepercayaannya lebar. Cek profil untuk garis CI.</div>}
       </div>
     )
   }
   if (a.length === 2 && /vs|dibanding|banding/i.test(j.teks)) {
     return <div className="abuk dua">{a.map(x => <div key={x.label} className="ab"><b>{x.nilai}{x.satuan ? ' ' + x.satuan : ''}</b><span>{x.label}</span></div>)}</div>
   }
-  return <div className="abuk">{a.map(x => <div key={x.label} className="ab"><b>{x.nilai}{x.satuan ? ' ' + x.satuan : ''}</b><span>{x.label}</span></div>)}</div>
+  return <div className="abuk" style={kolomAbuk(a.length)}>{a.map(x => <div key={x.label} className="ab"><b>{x.nilai}{x.satuan ? ' ' + x.satuan : ''}</b><span>{x.label}</span></div>)}</div>
 }
+
+/** 1-3 angka satu baris; 4 jadi 2x2; lebih dari itu 3 kolom. */
+const kolomAbuk = (n: number) => ({ gridTemplateColumns: `repeat(${n <= 3 ? n : n === 4 ? 2 : 3}, minmax(0, 1fr))` })
 
 export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan, onDoronganTerpakai }: { halaman: string; onTutup: () => void; buka: boolean; besar: boolean; setBesar: (b: boolean) => void; dorongan: AiDorongan | null; onDoronganTerpakai: () => void }) {
   const { faskes } = useData()
@@ -426,18 +456,20 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
     })
   }
 
-  const saranIkut = (lalu?: string) => (SARAN[halaman] ?? SARAN.default).filter(s => s !== lalu).slice(0, 3)
+  const saranIkut = (lalu?: string) => (SARAN[halaman] ?? SARAN.default).filter(s => !mirip(s, lalu)).slice(0, 3)
   // Saran lanjutan mengikuti isi jawaban: modul yang dibahas dan faskes yang disebut. Semua bisa dijawab template.
   const saranKonteks = (j: Jawaban | undefined, mS: Modul | null, lalu?: string): string[] | null => {
     const urlModul = j?.tautan?.map(t => t.url.match(/^\/modul\/(\w+)/)?.[1]).find((x): x is Modul => !!x && (MODUL as string[]).includes(x))
     const mod = mS ?? urlModul ?? null
+    const kode = (j?.tautan ?? []).filter(t => t.url.startsWith('/faskes/') && /^(RS|FKTP)-\d+$/.test(t.label)).map(t => t.label)
+    if (!mod && kode.length >= 2) return [`Kenapa ${kode[0]} ditandai?`, `Bandingkan ${kode[0]} dan ${kode[1]}`].filter(s => !mirip(s, lalu))
     if (!mod) return null
     const n = INFO[mod].nomor
     const adaFaskes = j?.tautan?.some(t => t.url.startsWith('/faskes/'))
     const daftar = adaFaskes
       ? [`Faskes mana lagi yang ditandai di modul #${n}?`, `Bagaimana tren bulanan modul #${n}?`]
       : [`Faskes mana penyumbang terbesar di modul #${n}?`, `Bagaimana tren modul #${n} per bulan?`]
-    return daftar.filter(s => s !== lalu)
+    return daftar.filter(s => !mirip(s, lalu))
   }
 
   /* ---- dorongan eksternal: prefill konteks + pertanyaan, tahan dua periode ---- */
@@ -471,34 +503,52 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
     const { k, s } = kalimatPertama(p.content)
     const mS = modulDariSumber(p.jawaban?.sumber)
     const fbK = fb[p.id]
+    // Satu tombol per tujuan: tautan jawaban + halaman modul sumber, tanpa URL ganda.
+    const antreanUrl = mode === 'hidup' && mS ? '/antrean?mod=' + mS + '&st=' + encodeURIComponent('perhatian|diamati') : null
+    const tujuan: Tautan[] = []
+    for (const t of [...(p.jawaban?.tautan ?? []), ...(mS ? [{ label: `Modul #${INFO[mS].nomor}`, url: '/modul/' + mS }] : [])]) {
+      if (!t?.url?.startsWith('/') || tujuan.some(x => x.url === t.url)) continue
+      if (antreanUrl && t.url === '/antrean') continue
+      // Kode faskes di teks sudah otomatis jadi tautan; jangan diulang sebagai tombol.
+      if (t.url.startsWith('/faskes/') && p.content.includes(t.label)) continue
+      tujuan.push(t)
+    }
+    const adaTabel = /^\s*\|.+\|\s*$/m.test(p.content)
     return (
       <div key={p.id} className="ais">
         <span className="logo-an"><SidakMark size={20} /></span>
         <div className="ais-b">
-          {mode === 'hidup' && <button type="button" className="ai-sal" aria-label="Salin jawaban" onClick={() => salin(p.content)}><Icon path={mdiContentCopy} size={13} /></button>}
-          <div className="ai-jawab"><TeksJawab teks={k} faskes={faskes} nav={nav} />{p.henti && <span className="hint"> — dihentikan</span>}</div>
+          <div className="ai-jawab"><TeksJawab teks={k} faskes={faskes} nav={nav} />{p.henti && <span className="hint"> · dihentikan</span>}</div>
           {s && <div className="ai-sisa"><TeksJawab teks={s} faskes={faskes} nav={nav} /></div>}
-          {p.jawaban && <Bukti j={p.jawaban} faskes={faskes} nav={nav} />}
-          <div className="asum">
-            {p.jawaban?.cadangan && <span className="luring">Jawaban tersimpan · mode luring</span>}
-            {p.jawaban?.sumber && (mS ? <Link className="chip-sumber" to={'/modul/' + mS}>{p.jawaban.sumber} →</Link> : <cite>{p.jawaban.sumber}</cite>)}
-          </div>
-          {p.jawaban?.tautan && p.jawaban.tautan.length > 0 && <div className="tautan">{p.jawaban.tautan.map((t, k) => <Link key={k} to={t.url}>{t.label} →</Link>)}</div>}
-          {mode === 'hidup' && mS && p.jawaban?.sumber && (
-            <div className="aks-chip">
-              {halaman.startsWith('/antrean') && <button type="button" className="chip ghost" onClick={() => terapkanFilter(mS)}>Terapkan filter</button>}
-              <Link className="chip ghost" to={'/antrean?mod=' + mS + '&st=' + encodeURIComponent('perhatian|diamati')}>Lihat di Antrean →</Link>
+          {p.jawaban && !adaTabel && <Bukti j={p.jawaban} faskes={faskes} nav={nav} />}
+          {(tujuan.length > 0 || antreanUrl) && (
+            <div className="ai-aksi">
+              {tujuan.map(t => <Link key={t.url} className="ai-tombol" to={t.url}>{t.label} →</Link>)}
+              {antreanUrl && <Link className="ai-tombol" to={antreanUrl}>Lihat di Antrean →</Link>}
+              {mode === 'hidup' && mS && halaman.startsWith('/antrean') && <button type="button" className="ai-tombol" onClick={() => terapkanFilter(mS)}>Terapkan filter</button>}
             </div>
           )}
-          {mode === 'hidup' && <div className="ais-fu">{(saranKonteks(p.jawaban, mS, pertanyaanPalingAkhir) ?? saranIkut(pertanyaanPalingAkhir)).slice(0, 2).map(sg => <button key={sg} type="button" className="chip" onClick={() => kirim(sg)}>{sg}</button>)}</div>}
+          {(p.jawaban?.sumber || p.jawaban?.cadangan) && (
+            <div className="ai-sumber">
+              {p.jawaban?.cadangan && <span className="luring">Jawaban tersimpan · mode luring</span>}
+              {p.jawaban?.sumber && <span>Sumber: {p.jawaban.sumber}</span>}
+            </div>
+          )}
           {mode === 'hidup' && (
-            <div className="ais-fb">
-              <button type="button" className={fbK?.n === 1 ? 'on' : ''} aria-label={fbK?.n === 1 ? 'Hapus penilaian membantu' : 'Jawaban membantu'} onClick={() => fbPilih(p.id, fbK?.n === 1 ? 0 : 1)} aria-pressed={fbK?.n === 1}><Icon path={fbK?.n === 1 ? mdiThumbUp : mdiThumbUpOutline} size={14} /></button>
-              <button type="button" className={fbK?.n === -1 ? 'on' : ''} aria-label={fbK?.n === -1 ? 'Hapus penilaian tidak membantu' : 'Jawaban kurang membantu'} onClick={() => fbPilih(p.id, fbK?.n === -1 ? 0 : -1)} aria-pressed={fbK?.n === -1}><Icon path={fbK?.n === -1 ? mdiThumbDown : mdiThumbDownOutline} size={14} /></button>
-              {fbK?.n === -1 && <div className="fb-alasan">{ALASAN.map(a => <button key={a} type="button" className={fbK.alasan.includes(a) ? 'on' : ''} onClick={() => fbPilih(p.id, -1, a)} aria-pressed={fbK.alasan.includes(a)}>{a}</button>)}</div>}
+            <div className="ais-fu">
+              <div className="ais-fu-lbl">Lanjutkan dengan</div>
+              {(saranKonteks(p.jawaban, mS, pertanyaanPalingAkhir) ?? saranIkut(pertanyaanPalingAkhir)).slice(0, 2).map(sg => <button key={sg} type="button" className="chip" onClick={() => kirim(sg)}>{sg}</button>)}
             </div>
           )}
-          <span className="ai-jam">{waktu(p.at)}{p.jawaban?.cadangan ? ' · luring' : ''}</span>
+          <div className="ais-fb">
+            {mode === 'hidup' && <>
+              <button type="button" className={fbK?.n === 1 ? 'on' : ''} aria-label={fbK?.n === 1 ? 'Hapus penilaian membantu' : 'Jawaban membantu'} onClick={() => fbPilih(p.id, fbK?.n === 1 ? 0 : 1)} aria-pressed={fbK?.n === 1}><Icon path={fbK?.n === 1 ? mdiThumbUp : mdiThumbUpOutline} size={15} /></button>
+              <button type="button" className={fbK?.n === -1 ? 'on' : ''} aria-label={fbK?.n === -1 ? 'Hapus penilaian tidak membantu' : 'Jawaban kurang membantu'} onClick={() => fbPilih(p.id, fbK?.n === -1 ? 0 : -1)} aria-pressed={fbK?.n === -1}><Icon path={fbK?.n === -1 ? mdiThumbDown : mdiThumbDownOutline} size={15} /></button>
+              <button type="button" aria-label="Salin jawaban" title="Salin jawaban" onClick={() => salin(p.content)}><Icon path={mdiContentCopy} size={15} /></button>
+            </>}
+            <span className="ai-jam">{waktu(p.at)}{p.jawaban?.cadangan ? ' · luring' : ''}</span>
+            {mode === 'hidup' && fbK?.n === -1 && <div className="fb-alasan">{ALASAN.map(a => <button key={a} type="button" className={fbK.alasan.includes(a) ? 'on' : ''} onClick={() => fbPilih(p.id, -1, a)} aria-pressed={fbK.alasan.includes(a)}>{a}</button>)}</div>}
+          </div>
         </div>
       </div>
     )
@@ -546,7 +596,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
       <div className="chat-head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="logo-an"><SidakMark size={20} /></span>
-          <div><b>Tanya AI SIDAK</b><div className="hint">Asisten AI data klaim — bukan pengganti audit</div></div>
+          <div><b>Tanya AI SIDAK</b><div className="hint">Asisten AI data klaim, bukan pengganti audit</div></div>
         </div>
         <div className="head-k">
           <button type="button" className="his-btn" onClick={() => setRiw(o => !o)} aria-expanded={riw} aria-haspopup="dialog" aria-label="Riwayat percakapan" title="Riwayat percakapan"><Icon path={mdiHistory} size={16} /></button>
@@ -620,7 +670,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
           </button>
         </form>
       )}
-      {luring && <div className="chat-hint-lur">Kembali daring untuk bertanya — sementara itu telusuri jawaban tersimpan di atas.</div>}
+      {luring && <div className="chat-hint-lur">Kembali daring untuk bertanya. Sementara itu, telusuri jawaban tersimpan di atas.</div>}
       <div className="chat-foot">Jawaban dari data sampel anonim ±1% · bukan pengganti audit medis</div>
 
       {riw && (
@@ -644,7 +694,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
             <>
               <span className="cari his-cari"><Icon path={mdiMagnify} size={13} /><input type="search" value={riwKunci} onChange={e => setRiwKunci(e.target.value)} placeholder="Cari di riwayat…" aria-label="Cari di riwayat" /></span>
               <div className="his-lis">
-                {tampilKonvo.length === 0 && <div className="his-kosong">{konvo.length === 0 ? 'Belum ada riwayat — pertanyaan pertama Anda akan tersimpan di sini.' : 'Tidak ada yang cocok.'}</div>}
+                {tampilKonvo.length === 0 && <div className="his-kosong">{konvo.length === 0 ? 'Belum ada riwayat. Pertanyaan pertama Anda akan tersimpan di sini.' : 'Tidak ada yang cocok.'}</div>}
                 {Array.from(new Set(tampilKonvo.map(k => grupHari(k.at)))).map(g => (
                   <div key={g}>
                     <div className="his-grup">{g}</div>

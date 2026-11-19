@@ -709,6 +709,7 @@ def pilih_retrieval(slot):
 # ------------------------------------------------- jawaban template (tanpa LLM)
 # Pertanyaan berstruktur dijawab kode dari hasil alat: cepat, dan angkanya identik dengan data.
 _BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+_PENDEK = {"rujukan": "Rujukan", "severity": "Severity", "fragmentasi": "Fragmentasi", "readmisi": "Readmisi"}
 _UNIT_VOLUME = {"rujukan": "kunjungan sakit", "fragmentasi": "kunjungan RJTL", "severity": "rawat inap", "readmisi": "rawat inap"}
 _URUT_LABEL = {"rupiah_tertimbang": "selisih rupiah tertimbang", "rupiah": "selisih rupiah sampel", "OE": "O/E",
                "z": "skor z", "volume": "volume"}
@@ -852,9 +853,14 @@ def _det_daftar(d, hitung, mod, slot):
     else:
         buka = "Ada %s temuan berstatus perlu perhatian atau diamati di %s%s." % (fid(d["jumlah_temuan"]), lw, lingkup)
     urut = {"oe": "OE", "z": "z", "count": "volume"}.get(slot.get("metric"), "rupiah_tertimbang")
-    tabel = ["| Faskes | Modul | Status | O/E | Selisih tertimbang |", "|---|---|---|---|---|"]
-    tabel += ["| %s | #%d %s | %s | %s | %s |" % (x["faskes"], x["nomor"], x["modul"], x["status"], fid(x["OE"], 2), rp(x["selisih_rupiah_tertimbang"]))
-              for x in rows]
+    # Ringkas agar muat di panel chat: kolom Modul hanya bila barisnya lintas modul, nama modul versi pendek.
+    if mod or len({x["nomor"] for x in rows}) == 1:
+        tabel = ["| Faskes | Status | O/E | Selisih |", "|---|---|---|---|"]
+        tabel += ["| %s | %s | %s | %s |" % (x["faskes"], x["status"], fid(x["OE"], 2), rp(x["selisih_rupiah_tertimbang"])) for x in rows]
+    else:
+        tabel = ["| Faskes | Modul | Status | O/E | Selisih |", "|---|---|---|---|---|"]
+        tabel += ["| %s | #%d %s | %s | %s | %s |" % (x["faskes"], x["nomor"], _PENDEK[next(k for k, v in NOMOR.items() if v == x["nomor"])],
+                                                       x["status"], fid(x["OE"], 2), rp(x["selisih_rupiah_tertimbang"])) for x in rows]
     return {"teks": "%s Urutan teratas menurut %s:\n%s\n%s" % (buka, _URUT_LABEL[urut], "\n".join(tabel), _CATATAN),
             "angka": [{"label": x["faskes"], "nilai": fid(x["OE"], 2), "satuan": "O/E"} for x in rows[:3]],
             "tautan": [{"label": x["faskes"], "url": x["tautan"]} for x in rows[:3]] + [{"label": "Antrean audit", "url": "/antrean"}],
