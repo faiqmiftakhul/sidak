@@ -104,7 +104,7 @@ export default function Profil() {
         </div>
         <div className="hbar" style={{ justifyContent: 'flex-end' }}>
           {f && <button className="chip ghost" type="button" onClick={() => buka({ konteks: `${f.label} · ${f.kab}`, pertanyaan: `Apa temuan utama untuk ${f.label}?` })}><Sparkle size={13} /> Tanya AI tentang {f.id}</button>}
-          {moduls.map(k => <StatusPill key={k} s={f.modul[k]!.status} />)}
+          {moduls.map(k => <StatusPill key={k} s={f.modul[k]!.status} awalan={'#' + INFO[k].nomor} pendek />)}
           <button className="btn primary" type="button" onClick={() => railRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{audit === 'belum' ? 'Mulai audit' : 'Lanjutkan audit'}</button>
         </div>
       </div>

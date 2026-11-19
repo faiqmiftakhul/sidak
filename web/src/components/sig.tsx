@@ -12,10 +12,12 @@ const IKON_STATUS: Record<Status, string> = {
 }
 
 /** Status faskes: ikon + label. Warna selalu amber/slate — merah tidak pernah untuk unsur non-sistem. */
-export function StatusPill({ s, md }: { s: Status; md?: boolean }) {
+/** Pil status. `awalan` (mis. "#4") menyebut modulnya; `pendek` menyingkat "Dalam rentang wajar" jadi "Wajar". */
+export function StatusPill({ s, md, awalan, pendek }: { s: Status; md?: boolean; awalan?: string; pendek?: boolean }) {
+  const label = pendek && s === 'wajar' ? 'Wajar' : STATUS[s].label
   return (
     <span className={'status ' + s + (md ? ' md' : '')} style={{ color: STATUS[s].warna, background: STATUS[s].bg }}>
-      <Icon path={IKON_STATUS[s]} size={md ? 15 : 12} />{STATUS[s].label}
+      <Icon path={IKON_STATUS[s]} size={md ? 15 : 12} />{awalan ? <>{awalan}&nbsp;{label}</> : label}
     </span>
   )
 }
@@ -121,9 +123,9 @@ const TAHAP: { nilai: StatusAudit; label: string }[] = [
 export const LABEL_AUDIT: Record<StatusAudit, string> = TAHAP.reduce((o, t) => ({ ...o, [t.nilai]: t.label }), {} as Record<StatusAudit, string>)
 
 /** Stepper progres audit Belum → Sedang → Selesai. */
-export function Progres({ nilai, fb }: { nilai: StatusAudit; fb: (s: StatusAudit) => void }) {
+export function Progres({ nilai, fb, ringkas }: { nilai: StatusAudit; fb: (s: StatusAudit) => void; ringkas?: boolean }) {
   return (
-    <span className="step" role="group" aria-label="Progres audit">
+    <span className={'step' + (ringkas ? ' ringkas' : '')} role="group" aria-label="Progres audit">
       {TAHAP.map((t, i) => <button key={t.nilai} type="button" className={nilai === t.nilai ? 'on s' + i : ''} aria-pressed={nilai === t.nilai} onClick={() => fb(t.nilai)}>{t.label}</button>)}
     </span>
   )

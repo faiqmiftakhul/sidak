@@ -47,9 +47,9 @@ export default function KpiCard({ role, icon, label, value, oe, delta, sparkline
       <div className="kpi-top">
         <span className="kpi-chip" style={{ background: tok.t2 }}><Icon path={ikon} size={sm ? 14 : 16} style={{ color: tok.text }} /></span>
         <span className="kpi-label">{label}</span>
-        {pil && <span className="kpi-pill" style={{ color: tok.text, background: tok.t2 }}>{pil.label}</span>}
       </div>
       <div className="kpi-value" style={{ color: tok.text }}>{value}</div>
+      {pil && <span className="kpi-pill" style={{ color: tok.text, background: tok.t2 }}>{pil.label}</span>}
       {delta && <div className="kpi-delta" style={{ color: POLARITY_COLOR[POLARITY[role]] }}><Icon path={delta.parezek === 0 ? mdiMinus : delta.parezek > 0 ? mdiArrowUp : mdiArrowDown} size={12} />{delta.value}</div>}
       {sparkline && !sm && <Spark v={sparkline} warna={tok.text} />}
       {hint && <div className="kpi-hint">{hint}</div>}

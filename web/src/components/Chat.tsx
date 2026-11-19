@@ -427,6 +427,18 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
   }
 
   const saranIkut = (lalu?: string) => (SARAN[halaman] ?? SARAN.default).filter(s => s !== lalu).slice(0, 3)
+  // Saran lanjutan mengikuti isi jawaban: modul yang dibahas dan faskes yang disebut. Semua bisa dijawab template.
+  const saranKonteks = (j: Jawaban | undefined, mS: Modul | null, lalu?: string): string[] | null => {
+    const urlModul = j?.tautan?.map(t => t.url.match(/^\/modul\/(\w+)/)?.[1]).find((x): x is Modul => !!x && (MODUL as string[]).includes(x))
+    const mod = mS ?? urlModul ?? null
+    if (!mod) return null
+    const n = INFO[mod].nomor
+    const adaFaskes = j?.tautan?.some(t => t.url.startsWith('/faskes/'))
+    const daftar = adaFaskes
+      ? [`Faskes mana lagi yang ditandai di modul #${n}?`, `Bagaimana tren bulanan modul #${n}?`]
+      : [`Faskes mana penyumbang terbesar di modul #${n}?`, `Bagaimana tren modul #${n} per bulan?`]
+    return daftar.filter(s => s !== lalu)
+  }
 
   /* ---- dorongan eksternal: prefill konteks + pertanyaan, tahan dua periode ---- */
   useEffect(() => {
@@ -478,7 +490,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
               <Link className="chip ghost" to={'/antrean?mod=' + mS + '&st=' + encodeURIComponent('perhatian|diamati')}>Lihat di Antrean →</Link>
             </div>
           )}
-          {mode === 'hidup' && <div className="ais-fu">{saranIkut(pertanyaanPalingAkhir).slice(0, 2).map(sg => <button key={sg} type="button" className="chip" onClick={() => kirim(sg)}>{sg}</button>)}</div>}
+          {mode === 'hidup' && <div className="ais-fu">{(saranKonteks(p.jawaban, mS, pertanyaanPalingAkhir) ?? saranIkut(pertanyaanPalingAkhir)).slice(0, 2).map(sg => <button key={sg} type="button" className="chip" onClick={() => kirim(sg)}>{sg}</button>)}</div>}
           {mode === 'hidup' && (
             <div className="ais-fb">
               <button type="button" className={fbK?.n === 1 ? 'on' : ''} aria-label={fbK?.n === 1 ? 'Hapus penilaian membantu' : 'Jawaban membantu'} onClick={() => fbPilih(p.id, fbK?.n === 1 ? 0 : 1)} aria-pressed={fbK?.n === 1}><Icon path={fbK?.n === 1 ? mdiThumbUp : mdiThumbUpOutline} size={14} /></button>
@@ -601,7 +613,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
       {!luring && (
         <form className="chat-in" onSubmit={ev => { ev.preventDefault(); (sibuk || st) ? hentikan() : kirim(q) }}>
           <span className="cari" style={{ flex: 1 }}>
-            <textarea ref={inpRef} value={q} onChange={ev => { setQ(ev.target.value); ev.target.style.height = 'auto'; ev.target.style.height = Math.min(ev.target.scrollHeight, 120) + 'px' }} onKeyDown={bersihDari} placeholder="Tanya tentang data klaim, modul, atau faskes…" aria-label="Tulis pertanyaan untuk Tanya AI SIDAK" rows={1} disabled={sibuk || !!st} autoComplete="off" />
+            <textarea ref={inpRef} value={q} onChange={ev => { setQ(ev.target.value); ev.target.style.height = 'auto'; ev.target.style.height = Math.min(ev.target.scrollHeight, 120) + 'px' }} onKeyDown={bersihDari} placeholder="Tanya soal data klaim…" aria-label="Tulis pertanyaan untuk Tanya AI SIDAK" rows={1} disabled={sibuk || !!st} autoComplete="off" />
           </span>
           <button className="btn primary" disabled={(sibuk || st) ? false : !q.trim()} aria-label={sibuk || st ? 'Hentikan pembuatan jawaban' : 'Kirim pertanyaan'} type="submit">
             <Icon path={(sibuk || st) ? mdiStop : mdiSend} size={15} />{(sibuk || st) ? 'Hentikan' : 'Kirim'}

@@ -46,6 +46,7 @@ export default function Topbar({ aiAktif, aiBadge, onTanyaAI }: { aiAktif: boole
 
   return (
     <div className="topbar">
+      <Link to="/" className="top-brand" aria-label="SIDAK, ke Ringkasan"><img src="/favicon-48x48.png?v=3" alt="" width="24" height="24" />SIDAK</Link>
       <nav className="crumb" aria-label="Breadcrumb">
         {crumbs.map((c, i) => {
           const terakhir = i === crumbs.length - 1

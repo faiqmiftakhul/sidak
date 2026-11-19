@@ -13,6 +13,7 @@ import CoachMark from './components/CoachMark'
 import { TooltipLayer } from './components/Tooltip'
 import { AiCtx, AiDorongan } from './components/ai'
 import { Icon } from './components/Icon'
+import SidakMark from './components/SidakMark'
 import { BRAND_JUDUL, FOOT_PERIODE, FOOT_SAMPEL, MODUL_NAV, NAV, TOGGLE } from './lib/labels'
 import { INFO, MODUL, Modul, useData } from './lib/data'
 
@@ -103,9 +104,9 @@ export default function App() {
             const p = ring.per_modul[m]
             const tl = MODUL_NAV[m]
             return (
-              <NavLink key={m} to={'/modul/' + m} data-tip={tl.label} data-tip-desc={tl.desc} data-tip-extra={p.n_perhatian > 0 ? `${p.n_perhatian} faskes berstatus Perlu perhatian` : 'Tidak ada faskes perlu perhatian'} aria-describedby="sidak-tip">
-                <Icon path={tl.icon} size={kolaps ? 20 : 18} />
-                <span className="nav-label">{tl.label}</span>
+              <NavLink key={m} to={'/modul/' + m} className="mod-link" data-tip={tl.label} data-tip-desc={tl.desc} data-tip-extra={p.n_perhatian > 0 ? `${p.n_perhatian} faskes berstatus Perlu perhatian` : 'Tidak ada faskes perlu perhatian'} aria-describedby="sidak-tip">
+                <Icon path={tl.icon} size={kolaps ? 20 : 18} className="mod-ico" />
+                <span className="nav-label"><span className="mod-no">#{INFO[m].nomor}</span> {tl.label.replace(/^#\d+\s*/, '')}</span>
                 {p.n_perhatian > 0 && <span className="count per">{p.n_perhatian}</span>}
               </NavLink>
             )
@@ -140,6 +141,13 @@ export default function App() {
             <Route path="/metodologi" element={<div className="page"><Metodologi /></div>} />
           </Routes>
         </main>
+
+        <nav className="botnav" aria-label="Navigasi utama (layar kecil)">
+          <NavLink to="/" end><Icon path={NAV.home.icon} size={22} /><span>{NAV.home.label}</span></NavLink>
+          <NavLink to="/antrean"><Icon path={NAV.antrean.icon} size={22} /><span>Antrean</span>{ring.n_perhatian > 0 && <span className="bn-badge" aria-label={`${ring.n_perhatian} perlu perhatian`}>{ring.n_perhatian}</span>}</NavLink>
+          <NavLink to="/peta"><Icon path={NAV.peta.icon} size={22} /><span>{NAV.peta.label}</span></NavLink>
+          <button type="button" className={chat ? 'active' : ''} onClick={toggleChat} aria-expanded={chat} aria-controls="sidak-chat"><SidakMark size={22} /><span>Tanya AI</span></button>
+        </nav>
 
         <div className="chat-scrim" onClick={() => setChat(false)} aria-hidden="true" />
 

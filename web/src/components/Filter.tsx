@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { mdiChevronDown, mdiClose } from '@mdi/js'
 import { Icon } from './Icon'
 
-/** Dropdown multi-pilih ber-coun; trigger merangkum pilihan ("Status: 2"). */
+/** Dropdown multi-pilih ber-count; trigger menyebut pilihannya ("Status: Perlu perhatian + Diamati"). */
 export function FilterCheck({ label, options, selected, onToggle, all, onAll }: {
   label: string
   options: { id: string; label: string; dot?: string; cnt?: number }[]
@@ -12,10 +12,12 @@ export function FilterCheck({ label, options, selected, onToggle, all, onAll }: 
   onAll?: (v: boolean) => void
 }) {
   const isAll = all === true || (all === undefined && options.length > 0 && options.every(o => selected.includes(o.id)))
+  const dipilih = options.filter(o => selected.includes(o.id))
+  const ringkas = isAll ? 'Semua' : dipilih.length === 0 ? 'Tidak ada' : dipilih.length <= 2 ? dipilih.map(o => o.label).join(' + ') : `${dipilih.length} dipilih`
   return (
     <details className="fsel">
       <summary title={label}>
-        <span>{label}: <b>{all === false ? selected.length : isAll ? 'Semua' : selected.length}</b></span>
+        <span>{label}: <b>{ringkas}</b></span>
         <Icon path={mdiChevronDown} size={16} />
       </summary>
       <div className="fsel-men" role="menuitemcheckbox">
@@ -45,10 +47,11 @@ export function FilterChips({ chips, onHapus, onHapusSemua, hasil }: {
   if (chips.length === 0 && hasil == null) return null
   return (
     <div className="fchips">
+      {chips.length > 0 && <span className="fchips-lbl">Filter aktif:</span>}
       {chips.map(c => (
-        <span key={c.key} className="fchip"><span>{c.label}</span><button type="button" aria-label={`Hapus ${c.label}`} onClick={() => onHapus(c.key)}><Icon path={mdiClose} size={12} /></button></span>
+        <span key={c.key} className="fchip"><span>{c.label}</span><button type="button" aria-label={`Hapus ${c.label}`} onClick={() => onHapus(c.key)}><Icon path={mdiClose} size={14} /></button></span>
       ))}
-      {chips.length > 0 && <button type="button" className="fchip-hapus" onClick={onHapusSemua}>Hapus semua</button>}
+      {chips.length > 0 && <button type="button" className="fchip-hapus" onClick={onHapusSemua}>Atur ulang</button>}
       {hasil != null && <span className="fhasil" aria-live="polite">{hasil}</span>}
     </div>
   )
