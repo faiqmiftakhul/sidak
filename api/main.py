@@ -561,6 +561,11 @@ def slot_heuristik(teks, halaman=None):
         cocok = True
         s["intent"] = "list"
         s["metric"] = "oe" if ("oe" in t or "o/e" in t) else ("z" if " z" in t or t.startswith("z ") else "rupiah")
+        # "RS tertinggi" tanpa penanda jamak = satu faskes; daftar terurut dibuka dengan faskes teratas.
+        s["tunggal"] = bool(_TUNGGAL.search(t) and not _JAMAK.search(t))
+        s["buka_teratas"] = not re.search(r"perlu diperhati|perhatian|ditandai|kandidat|antrean", t)
+        s["kerugian"] = bool(re.search(r"kerugian|\brugi\b|merugikan", t))
+        s["tipe"] = "FKRTL" if re.search(r"\brs\b|rumah sakit", t) else ("FKTP" if re.search(r"\bfktp\b|klinik|puskesmas", t) else None)
     elif "selisih" in t or "rupiah" in t:
         cocok = True
         s["intent"] = "aggregate"; s["metric"] = "rupiah"
@@ -603,6 +608,10 @@ def slot_heuristik(teks, halaman=None):
 
 _NAMA_MODUL = (("readmisi", "16"), ("fragmentasi", "9"), ("severity", "4"), ("upcoding", "4"), ("keparahan", "4"),
                ("rujukan", "3"), ("merujuk", "3"), ("rujuk", "3"))
+_TUNGGAL = re.compile(r"\b(rs|faskes|fktp|rumah sakit|klinik|puskesmas)\b[^?.]{0,40}?\b(tertinggi|terbesar|terbanyak|terparah|"
+                      r"paling (tinggi|besar|banyak|parah|bermasalah|mahal))\b")
+_JAMAK = re.compile(r"mana saja|apa saja|siapa saja|daftar|urutkan|urutan|peringkat|beberapa|semua|teratas|top\s*\d|"
+                    r"\b\d+\s*(rs|faskes|fktp)\b|\b(dua|tiga|empat|lima|sepuluh)\b")
 _BANDING = re.compile(r"\b(bandingkan|dibandingkan|banding|perbandingan|versus|vs)\b")
 _NARASI = re.compile(r"\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|"
                      r"beda|perbedaan|rekomendasi|saran|sebaiknya)\b")
@@ -691,7 +700,7 @@ def pilih_retrieval(slot):
     if intent in ("ranking", "list"):
         urut = {"oe": "OE", "z": "z", "rupiah": "rupiah_tertimbang", "count": "volume"}.get(met, "rupiah_tertimbang")
         p = [("daftar_temuan", {"wilayah": scop, "modul": mod, "status": "aktif",
-                                "urut": urut, "jumlah": topN, "sedikit": True})]
+                                "urut": urut, "jumlah": 20 if (slot.get("tunggal") or slot.get("tipe")) else topN, "sedikit": True})]
         if not mod:  # daftar lintas modul: sertakan hitungan tipis (bukan blob penuh)
             p.insert(0, ("faskes_count", {"wilayah": scop}))
         return p
@@ -755,6 +764,8 @@ def jawab_deterministik(slot, hasil):
         out = _det_faskes(r["jelaskan_temuan"], mod)
     elif "trend" in r:
         out = _det_tren(r["trend"])
+    elif "daftar_temuan" in r and slot.get("tunggal"):
+        out = _det_satu(r["daftar_temuan"], mod, slot)
     elif "daftar_temuan" in r:
         out = _det_daftar(r["daftar_temuan"], r.get("faskes_count"), mod, slot)
     elif "faskes_count" in r:
@@ -842,17 +853,28 @@ def _det_indikator(a, met):
 
 
 def _det_daftar(d, hitung, mod, slot):
-    lw = _label_wilayah(d["wilayah"]); rows = d["temuan"][:5]
+    lw = _label_wilayah(d["wilayah"])
+    rows = [x for x in d["temuan"] if not slot.get("tipe") or x["tipe"] == slot["tipe"]][:min(int(slot.get("topN") or 5), 5)]
+    jenis = {"FKRTL": "RS", "FKTP": "FKTP"}.get(slot.get("tipe"))
     lingkup = (" pada " + _nama_modul(mod)) if mod else ""
     if not rows:
         return {"teks": "Tidak ada faskes di %s yang berstatus Perlu perhatian atau Diamati%s. %s" % (lw, lingkup, _CATATAN),
                 "angka": [], "tautan": [{"label": "Modul", "url": "/modul/" + mod}] if mod else [{"label": "Antrean audit", "url": "/antrean"}],
                 "sumber": _sumber(mod)}
-    if hitung:
+    urut = {"oe": "OE", "z": "z", "count": "volume"}.get(slot.get("metric"), "rupiah_tertimbang")
+    if slot.get("buka_teratas") and urut != "volume":
+        nilai = lambda x: _NILAI_URUT[urut](x)
+        susul = [x["faskes"] for x in rows[1:3]]
+        buka = "%s mencatat %s di %s%s (%s)%s." % (
+            rows[0]["faskes"], _URUT_TERATAS[urut], lw, lingkup, nilai(rows[0]), (", disusul " + " dan ".join(susul)) if susul else "")
+        if not jenis:
+            buka += " Ada %s temuan berstatus perlu perhatian atau diamati." % fid(d["jumlah_temuan"])
+    elif jenis:
+        buka = "Berikut %s di %s%s yang berstatus perlu perhatian atau diamati." % (jenis, lw, lingkup)
+    elif hitung:
         buka = "%s faskes di %s berstatus perlu perhatian pada setidaknya satu modul." % (fid(hitung["faskes_perlu_perhatian"]), lw)
     else:
         buka = "Ada %s temuan berstatus perlu perhatian atau diamati di %s%s." % (fid(d["jumlah_temuan"]), lw, lingkup)
-    urut = {"oe": "OE", "z": "z", "count": "volume"}.get(slot.get("metric"), "rupiah_tertimbang")
     # Ringkas agar muat di panel chat: kolom Modul hanya bila barisnya lintas modul, nama modul versi pendek.
     if mod or len({x["nomor"] for x in rows}) == 1:
         tabel = ["| Faskes | Status | O/E | Selisih |", "|---|---|---|---|"]
@@ -865,6 +887,45 @@ def _det_daftar(d, hitung, mod, slot):
             "angka": [{"label": x["faskes"], "nilai": fid(x["OE"], 2), "satuan": "O/E"} for x in rows[:3]],
             "tautan": [{"label": x["faskes"], "url": x["tautan"]} for x in rows[:3]] + [{"label": "Antrean audit", "url": "/antrean"}],
             "sumber": _sumber(mod)}
+
+
+_URUT_TERATAS = {"rupiah_tertimbang": "selisih tertimbang terbesar", "OE": "O/E tertinggi", "z": "skor z tertinggi"}
+_NILAI_URUT = {"rupiah_tertimbang": lambda x: rp(x["selisih_rupiah_tertimbang"]), "OE": lambda x: "O/E " + fid(x["OE"], 2),
+               "z": lambda x: "skor z " + fid(x["z"], 2)}
+_CATATAN_KERUGIAN = ("Angka ini estimasi selisih klaim dari sampel ±1% peserta yang dibobot ke populasi, bukan kerugian yang sudah terbukti; "
+                     "kepastiannya ditentukan lewat audit medis.")
+
+
+def _det_satu(d, mod, slot):
+    """Pertanyaan satu faskes ("RS tertinggi"): jawab faskes teratas dulu, dua berikutnya sebagai pembanding."""
+    lw = _label_wilayah(d["wilayah"]); lingkup = (" pada " + _nama_modul(mod)) if mod else ""
+    rows = [x for x in d["temuan"] if not slot.get("tipe") or x["tipe"] == slot["tipe"]]
+    jenis = {"FKRTL": "RS", "FKTP": "FKTP"}.get(slot.get("tipe"), "faskes")
+    if not rows:
+        return {"teks": "Tidak ada %s di %s yang berstatus Perlu perhatian atau Diamati%s. %s" % (jenis, lw, lingkup, _CATATAN),
+                "angka": [], "tautan": [{"label": "Antrean audit", "url": "/antrean"}], "sumber": _sumber(mod)}
+    urut = {"oe": "OE", "z": "z"}.get(slot.get("metric"), "rupiah_tertimbang")
+    x = rows[0]; m = next(k for k, v in NOMOR.items() if v == x["nomor"])
+    status = x["status"].lower()
+    pada = "" if mod else " pada " + _nama_modul(m)
+    if urut == "OE":
+        kal = "%s mencatat O/E tertinggi di antara %s ditandai di %s%s: %s%s." % (x["faskes"], jenis, lw, lingkup, fid(x["OE"], 2), pada)
+        rinci = "Skor z %s, selisih tertimbang sekitar %s, status %s." % (fid(x["z"], 2), rp(x["selisih_rupiah_tertimbang"]), status)
+    elif urut == "z":
+        kal = "%s mencatat skor z tertinggi di antara %s ditandai di %s%s: %s%s." % (x["faskes"], jenis, lw, lingkup, fid(x["z"], 2), pada)
+        rinci = "O/E %s, selisih tertimbang sekitar %s, status %s." % (fid(x["OE"], 2), rp(x["selisih_rupiah_tertimbang"]), status)
+    else:
+        kal = "%s mencatat selisih tertimbang terbesar di antara %s ditandai di %s%s: sekitar %s%s." % (
+            x["faskes"], jenis, lw, lingkup, rp(x["selisih_rupiah_tertimbang"]), pada)
+        rinci = "O/E %s dan skor z %s, status %s." % (fid(x["OE"], 2), fid(x["z"], 2), status)
+    susul = rows[1:3]
+    if susul:
+        rinci += " Berikutnya %s." % " dan ".join("%s (%s)" % (y["faskes"], _NILAI_URUT[urut](y)) for y in susul)
+    return {"teks": " ".join([kal, rinci, _CATATAN_KERUGIAN if slot.get("kerugian") else _CATATAN]),
+            "angka": [{"label": "Selisih tertimbang", "nilai": rp(x["selisih_rupiah_tertimbang"])}, {"label": "O/E", "nilai": fid(x["OE"], 2)},
+                      {"label": "Skor z", "nilai": fid(x["z"], 2)}],
+            "tautan": [{"label": "Profil " + x["faskes"], "url": x["tautan"]}, {"label": "Modul #%d" % x["nomor"], "url": "/modul/" + m}],
+            "sumber": _sumber(m)}
 
 
 def _det_tren(tr):

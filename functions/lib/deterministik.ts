@@ -46,6 +46,7 @@ export async function jawabDeterministik(slot: J, hasil: Array<[string, unknown]
     out = { teks: KONSEP, angka: [], tautan: [{ label: "Metodologi", url: "/metodologi" }], sumber: "Metodologi SIDAK" }
   } else if (r.jelaskan_temuan) out = await detFaskes(r.jelaskan_temuan, mod)
   else if (r.trend) out = await detTren(r.trend)
+  else if (r.daftar_temuan && slot.tunggal) out = await detSatu(r.daftar_temuan, mod, slot)
   else if (r.daftar_temuan) out = await detDaftar(r.daftar_temuan, r.faskes_count, mod, slot)
   else if (r.faskes_count) {
     const c = r.faskes_count, w = await labelWilayah(c.wilayah)
@@ -127,8 +128,45 @@ async function detIndikator(a: J, met: string): Promise<J> {
   }
 }
 
+const URUT_TERATAS: Record<string, string> = { rupiah_tertimbang: "selisih tertimbang terbesar", OE: "O/E tertinggi", z: "skor z tertinggi" }
+const NILAI_URUT: Record<string, (x: J) => string> = { rupiah_tertimbang: x => rp(x.selisih_rupiah_tertimbang), OE: x => "O/E " + fid(x.OE, 2), z: x => "skor z " + fid(x.z, 2) }
+const CATATAN_KERUGIAN = "Angka ini estimasi selisih klaim dari sampel ±1% peserta yang dibobot ke populasi, bukan kerugian yang sudah terbukti; kepastiannya ditentukan lewat audit medis."
+const JENIS: Record<string, string> = { FKRTL: "RS", FKTP: "FKTP" }
+
+/** Pertanyaan satu faskes ("RS tertinggi"): jawab faskes teratas dulu, dua berikutnya sebagai pembanding. */
+async function detSatu(d: J, mod: string | null, slot: J): Promise<J> {
+  const lw = await labelWilayah(d.wilayah), lingkup = mod ? " pada " + namaModul(mod) : ""
+  const rows: J[] = d.temuan.filter((x: J) => !slot.tipe || x.tipe === slot.tipe)
+  const jenis = JENIS[slot.tipe] ?? "faskes"
+  if (!rows.length) return { teks: `Tidak ada ${jenis} di ${lw} yang berstatus Perlu perhatian atau Diamati${lingkup}. ${CATATAN}`, angka: [], tautan: [{ label: "Antrean audit", url: "/antrean" }], sumber: await sumber(mod) }
+  const urut = ({ oe: "OE", z: "z" } as Record<string, string>)[slot.metric] ?? "rupiah_tertimbang"
+  const x = rows[0], m = slugModul(x.nomor), status = String(x.status).toLowerCase()
+  const pada = mod ? "" : " pada " + namaModul(m)
+  let kal: string, rinci: string
+  if (urut === "OE") {
+    kal = `${x.faskes} mencatat O/E tertinggi di antara ${jenis} ditandai di ${lw}${lingkup}: ${fid(x.OE, 2)}${pada}.`
+    rinci = `Skor z ${fid(x.z, 2)}, selisih tertimbang sekitar ${rp(x.selisih_rupiah_tertimbang)}, status ${status}.`
+  } else if (urut === "z") {
+    kal = `${x.faskes} mencatat skor z tertinggi di antara ${jenis} ditandai di ${lw}${lingkup}: ${fid(x.z, 2)}${pada}.`
+    rinci = `O/E ${fid(x.OE, 2)}, selisih tertimbang sekitar ${rp(x.selisih_rupiah_tertimbang)}, status ${status}.`
+  } else {
+    kal = `${x.faskes} mencatat selisih tertimbang terbesar di antara ${jenis} ditandai di ${lw}${lingkup}: sekitar ${rp(x.selisih_rupiah_tertimbang)}${pada}.`
+    rinci = `O/E ${fid(x.OE, 2)} dan skor z ${fid(x.z, 2)}, status ${status}.`
+  }
+  const susul = rows.slice(1, 3)
+  if (susul.length) rinci += ` Berikutnya ${susul.map(y => `${y.faskes} (${NILAI_URUT[urut](y)})`).join(" dan ")}.`
+  return {
+    teks: [kal, rinci, slot.kerugian ? CATATAN_KERUGIAN : CATATAN].join(" "),
+    angka: [{ label: "Selisih tertimbang", nilai: rp(x.selisih_rupiah_tertimbang) }, { label: "O/E", nilai: fid(x.OE, 2) }, { label: "Skor z", nilai: fid(x.z, 2) }],
+    tautan: [{ label: "Profil " + x.faskes, url: x.tautan }, { label: `Modul #${x.nomor}`, url: "/modul/" + m }],
+    sumber: await sumber(m),
+  }
+}
+
 async function detDaftar(d: J, hitung: J | undefined, mod: string | null, slot: J): Promise<J> {
-  const lw = await labelWilayah(d.wilayah), rows: J[] = d.temuan.slice(0, 5)
+  const lw = await labelWilayah(d.wilayah)
+  const rows: J[] = d.temuan.filter((x: J) => !slot.tipe || x.tipe === slot.tipe).slice(0, Math.min(Number(slot.topN) || 5, 5))
+  const jenis = JENIS[slot.tipe] ?? null
   const lingkup = mod ? " pada " + namaModul(mod) : ""
   if (!rows.length) {
     return {
@@ -136,10 +174,15 @@ async function detDaftar(d: J, hitung: J | undefined, mod: string | null, slot: 
       angka: [], tautan: mod ? [{ label: "Modul", url: "/modul/" + mod }] : [{ label: "Antrean audit", url: "/antrean" }], sumber: await sumber(mod),
     }
   }
-  const buka = hitung
-    ? `${fid(hitung.faskes_perlu_perhatian)} faskes di ${lw} berstatus perlu perhatian pada setidaknya satu modul.`
-    : `Ada ${fid(d.jumlah_temuan)} temuan berstatus perlu perhatian atau diamati di ${lw}${lingkup}.`
   const urut = ({ oe: "OE", z: "z", count: "volume" } as Record<string, string>)[slot.metric] ?? "rupiah_tertimbang"
+  let buka: string
+  if (slot.buka_teratas && urut !== "volume") {
+    const susul = rows.slice(1, 3).map(x => x.faskes)
+    buka = `${rows[0].faskes} mencatat ${URUT_TERATAS[urut]} di ${lw}${lingkup} (${NILAI_URUT[urut](rows[0])})${susul.length ? ", disusul " + susul.join(" dan ") : ""}.`
+    if (!jenis) buka += ` Ada ${fid(d.jumlah_temuan)} temuan berstatus perlu perhatian atau diamati.`
+  } else if (jenis) buka = `Berikut ${jenis} di ${lw}${lingkup} yang berstatus perlu perhatian atau diamati.`
+  else if (hitung) buka = `${fid(hitung.faskes_perlu_perhatian)} faskes di ${lw} berstatus perlu perhatian pada setidaknya satu modul.`
+  else buka = `Ada ${fid(d.jumlah_temuan)} temuan berstatus perlu perhatian atau diamati di ${lw}${lingkup}.`
   // Ringkas agar muat di panel chat: kolom Modul hanya bila barisnya lintas modul, nama modul versi pendek.
   const tabel = mod || new Set(rows.map(x => x.nomor)).size === 1
     ? ["| Faskes | Status | O/E | Selisih |", "|---|---|---|---|",

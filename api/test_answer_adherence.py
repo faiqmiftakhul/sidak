@@ -354,6 +354,27 @@ def uji_luring(cetak=True):
     main.KACHE_JAWABAN.clear()
     assert main.jalankan_pipeline([{"role": "user", "content": "Bandingkan Semarang dan Demak"}], "/", None) is None, "T16: perbandingan wilayah harus ke model"
 
+    # T17 - jawaban mengikuti bentuk pertanyaan: satu faskes vs daftar, jenis faskes, istilah "kerugian"
+    def tanya17(q):
+        main.KACHE_JAWABAN.clear()
+        return main.jalankan_pipeline([{"role": "user", "content": q}], "/", None)
+    def pertama(teks):
+        return teks.split(". ")[0]
+    r = tanya17("berapa potensi kerugian dari RS tertinggi?")
+    assert "RS-31595" in pertama(r["teks"]) and "Rp 18,4 M" in pertama(r["teks"]), "T17 satu RS: %s" % r["teks"][:120]
+    assert "|" not in r["teks"] and "bukan kerugian" in r["teks"] and len(r["angka"]) == 3, "T17 tanpa tabel + pelurusan kerugian"
+    slot = main.slot_heuristik("berapa potensi kerugian dari RS tertinggi?")
+    srcs = main.kumpulkan_angka([x for _, x in main.akses_retrieval(main.pilih_retrieval(slot))])
+    assert main.periksa_angka(r, srcs) == [], "T17 angka tertelusur: %r" % main.periksa_angka(r, srcs)
+    r = tanya17("RS mana yang O/E-nya paling tinggi?")
+    assert pertama(r["teks"]).startswith("RS-31612") and "4,29" in pertama(r["teks"]), "T17 O/E: %s" % r["teks"][:120]
+    assert tanya17("FKTP mana yang paling bermasalah?")["teks"].startswith("FKTP-"), "T17 jenis FKTP"
+    r = tanya17("Sebutkan 5 RS dengan selisih terbesar")
+    assert "| RS-31595" in r["teks"] and "FKTP-" not in r["teks"], "T17 daftar RS saja"
+    assert pertama(r["teks"]).startswith("RS-31595"), "T17 daftar terurut dibuka dengan teratas"
+    assert tanya17("Faskes dengan selisih terbesar di modul #3?")["teks"].count("modul #3") == 1, "T17 modul tidak diulang"
+    assert "36" in tanya17(PERTANYAAN["Q2"])["teks"], "T17 pertanyaan 'perlu diperhatikan' tetap dibuka jumlah"
+
     # T10 - SPA tidak menyajikan berkas di luar web/dist
     if hasattr(main, "spa"):
         for jalur in ("/etc/passwd", "../api/main.py", "%2e%2e/api/main.py"):
@@ -364,7 +385,7 @@ def uji_luring(cetak=True):
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T16 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T17 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):

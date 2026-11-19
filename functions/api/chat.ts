@@ -77,6 +77,8 @@ function slotDefault(halaman?: string): Record<string, any> {
 
 const NAMA_MODUL: Array<[string, string]> = [["readmisi", "16"], ["fragmentasi", "9"], ["severity", "4"], ["upcoding", "4"], ["keparahan", "4"],
   ["rujukan", "3"], ["merujuk", "3"], ["rujuk", "3"]]
+const TUNGGAL = /\b(rs|faskes|fktp|rumah sakit|klinik|puskesmas)\b[^?.]{0,40}?\b(tertinggi|terbesar|terbanyak|terparah|paling (tinggi|besar|banyak|parah|bermasalah|mahal))\b/
+const JAMAK = /mana saja|apa saja|siapa saja|daftar|urutkan|urutan|peringkat|beberapa|semua|teratas|top\s*\d|\b\d+\s*(rs|faskes|fktp)\b|\b(dua|tiga|empat|lima|sepuluh)\b/
 const BANDING = /\b(bandingkan|dibandingkan|banding|perbandingan|versus|vs)\b/
 const NARASI = /\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|beda|perbedaan|rekomendasi|saran|sebaiknya)\b/
 const reKata = (x: string) => new RegExp("\\b" + x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b")
@@ -119,6 +121,11 @@ export function slotHeuristik(teks: string, halaman?: string, kabKeys: string[] 
     cocok = true
     s.intent = "list"
     s.metric = t.includes("oe") || t.includes("o/e") ? "oe" : (t.includes(" z") || t.startsWith("z ") ? "z" : "rupiah")
+    // "RS tertinggi" tanpa penanda jamak = satu faskes; daftar terurut dibuka dengan faskes teratas.
+    s.tunggal = TUNGGAL.test(t) && !JAMAK.test(t)
+    s.buka_teratas = !/perlu diperhati|perhatian|ditandai|kandidat|antrean/.test(t)
+    s.kerugian = /kerugian|\brugi\b|merugikan/.test(t)
+    s.tipe = /\brs\b|rumah sakit/.test(t) ? "FKRTL" : (/\bfktp\b|klinik|puskesmas/.test(t) ? "FKTP" : null)
   } else if (t.includes("selisih") || t.includes("rupiah")) {
     cocok = true
     s.intent = "aggregate"; s.metric = "rupiah"
@@ -200,7 +207,7 @@ function pilihRetrieval(slot: Record<string, any>): Array<[string, Record<string
   }
   if (intent === "ranking" || intent === "list") {
     const urut = ({ oe: "OE", z: "z", rupiah: "rupiah_tertimbang", count: "volume" } as Record<string, string>)[met] ?? "rupiah_tertimbang"
-    const p: Array<[string, Record<string, any>]> = [["daftar_temuan", { wilayah: scop, modul: mod, status: "aktif", urut, jumlah: topN, sedikit: true }]]
+    const p: Array<[string, Record<string, any>]> = [["daftar_temuan", { wilayah: scop, modul: mod, status: "aktif", urut, jumlah: slot.tunggal || slot.tipe ? 20 : topN, sedikit: true }]]
     if (!mod) p.unshift(["faskes_count", { wilayah: scop }])
     return p
   }
