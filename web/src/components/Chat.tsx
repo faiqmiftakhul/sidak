@@ -13,7 +13,7 @@ import { Faskes, INFO, KOTA, MODUL, Modul, STATUS, Status, num, useData } from '
 
 interface Angka { label: string; nilai: string; satuan?: string; sumber?: string }
 interface Tautan { label: string; url: string }
-interface Jawaban { teks: string; angka?: Angka[]; tautan?: Tautan[]; sumber?: string; cadangan?: boolean }
+interface Jawaban { teks: string; angka?: Angka[]; tautan?: Tautan[]; sumber?: string; cadangan?: boolean; ditafsirkan?: string }
 interface Pesan { id: string; role: 'user' | 'assistant'; content: string; jawaban?: Jawaban; at: number; henti?: boolean }
 interface Konvo { id: string; judul: string; at: number; pesan: Pesan[] }
 
@@ -518,6 +518,7 @@ export default function Chat({ halaman, onTutup, buka, besar, setBesar, dorongan
       <div key={p.id} className="ais">
         <span className="logo-an"><SidakMark size={20} /></span>
         <div className="ais-b">
+          {p.jawaban?.ditafsirkan && <div className="hint">Dijawab sebagai: {p.jawaban.ditafsirkan}</div>}
           <div className="ai-jawab"><TeksJawab teks={k} faskes={faskes} nav={nav} />{p.henti && <span className="hint"> · dihentikan</span>}</div>
           {s && <div className="ai-sisa"><TeksJawab teks={s} faskes={faskes} nav={nav} /></div>}
           {p.jawaban && !adaTabel && <Bukti j={p.jawaban} faskes={faskes} nav={nav} />}

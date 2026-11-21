@@ -503,7 +503,8 @@ TEMPLATE = {"A": "Saya hanya membahas data klaim dan alur audit SIDAK.",
             "C": "Itu di luar wewenang saya — SIDAK menampilkan indikasi statistik; keputusan akhir melalui audit medis.",
             "D": "Itu di luar yang bisa saya bantu. Saya hanya menjawab dari data klaim SIDAK, misalnya faskes yang perlu perhatian, estimasi selisih rupiah, atau tren tiap modul.",
             "E": "Data itu tidak tersedia dalam sampel saat ini.",
-            "F": "Agar jawaban tepat, saya perlu satu klarifikasi: %s"}
+            "F": "Agar jawaban tepat, saya perlu satu klarifikasi: %s",
+            "G": "SIDAK tidak menilai individu (dokter, tenaga kesehatan, atau pasien) — analisis hanya sampai tingkat faskes, sebagai indikasi untuk audit."}
 _REFUSAL_SLOT = {"luar_cakupan": "D", "rahasia": "A", "injection": "A", "pasien": "B", "vonis": "C"}
 
 
@@ -1063,11 +1064,144 @@ def ambil_pertanyaan(msgs):
     return ""
 
 
+# Memori sesi: klien mengirim riwayat, jadi konteks (faskes, modul) dipulihkan dari giliran sebelumnya
+# tanpa menyimpan apa pun di server. Pertanyaan lanjutan ("detailkan", "kenapa?", "tren-nya?")
+# ditulis ulang menjadi pertanyaan lengkap sebelum masuk pipeline.
+_RE_KODE = re.compile(r"\b(?:rs|fktp)[- ]?\d{3,}\b", re.I)
+_RE_KODE_ADA = re.compile(r"\b(?:rs|fktp)[- ]?\d{3,}\b|\bmodul\s*#?\s*\d|#\s?\d", re.I)
+_RE_MODUL_RIWAYAT = re.compile(r"modul\s*#?\s*(3|4|9|16)\b|#\s?(3|4|9|16)\b", re.I)
+_RE_LANJUT = re.compile(
+    r"^(tolong |coba |bisa |boleh )?(detail(kan|nya)?|jelaskan( lebih)?( lanjut| detail| rinci| lengkap)?|rinci(kan)?|lanjut(kan)?|terus"
+    r"|kenapa( bisa)?( begitu| demikian)?|mengapa( begitu)?|kok bisa|maksudnya|contohnya|perdalam|elaborasi"
+    r"|lebih (detail|lengkap|rinci|lanjut)|ceritakan lebih)\b|\b(sebelumnya|tadi|barusan|di atas|yang tadi|yang itu)\b")
+_RE_ANAFORA = re.compile(r"\b(nya|tersebut|tadi|sebelumnya|yang sama)\b|-nya\b")
+
+
+def _normal(t):
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s/#-]", " ", (t or "").lower())).strip()
+
+
+def _kode_bersih(s):
+    s = re.sub(r"\s", "-", s.upper())
+    return re.sub(r"^(RS|FKTP)(\d)", r"\1-\2", s)
+
+
+def _konteks_riwayat(msgs):
+    i_u = max((i for i, m in enumerate(msgs) if m["role"] == "user"), default=0)
+    sebelum = list(reversed(msgs[:i_u]))
+    ais = next((m for m in sebelum if m["role"] == "assistant" and str(m.get("content") or "").strip()), None)
+    user_lalu = next((m for m in sebelum if m["role"] == "user"), None)
+    ais_teks = str((ais or {}).get("content") or "")
+    user_teks = str((user_lalu or {}).get("content") or "")
+    daftar = lambda s: list(dict.fromkeys(_kode_bersih(x) for x in _RE_KODE.findall(s)))
+    faskes = daftar(ais_teks) or daftar(user_teks)
+    m = _RE_MODUL_RIWAYAT.search(ais_teks) or _RE_MODUL_RIWAYAT.search(user_teks)
+    return faskes, (m.group(1) or m.group(2)) if m else None
+
+
+def lengkapi_dari_riwayat(teks, msgs):
+    """None = bukan pertanyaan lanjutan; str = pertanyaan lengkap hasil penulisan ulang."""
+    n = _normal(teks)
+    if not n or len(n.split(" ")) > 12 or _RE_KODE_ADA.search(teks):
+        return None
+    lanjut = bool(_RE_LANJUT.search(n))
+    if not lanjut and not _RE_ANAFORA.search(n):
+        return None
+    faskes, modul = _konteks_riwayat(msgs)
+    if len(faskes) == 1 and lanjut:
+        return f"Kenapa {faskes[0]} ditandai" + (f" pada modul #{modul}" if modul else "") + "?"
+    if len(faskes) >= 2 and lanjut:
+        return "Bandingkan " + " dan ".join(faskes[:3])
+    if modul and lanjut:
+        return f"Jelaskan modul #{modul} secara rinci"
+    if not lanjut and modul and "modul" not in n:
+        return f"{teks} modul #{modul}"
+    if not lanjut and len(faskes) == 1:
+        return f"{teks} {faskes[0]}"
+    return None
+
+
+# Penjaga deterministik (sama dengan functions/api/chat.ts): penilaian individu dan permintaan vonis selalu ditolak.
+_RE_INDIVIDU_G = re.compile(r"\b(dokter|dr\.|dpjp|perawat|bidan|nakes|tenaga (medis|kesehatan)|nama pasien|nik)\b", re.I)
+_RE_VONIS_C = re.compile(r"\b(apakah|benarkah|pasti|terbukti)\b.*\b(fraud|curang|kecurangan|korupsi|menipu|nakal)\b", re.I)
+
+# Rujukan yang butuh riwayat. "yang/ini/itu" sendirian terlalu umum, jadi hanya penanda kuat yang
+# memicu panggilan model; penanda lemah hanya bila heuristik tidak yakin.
+_RE_RUJUK_KUAT = re.compile(r"\b(tadi|sebelumnya|barusan|pertama|kedua|ketiga|terakhir|lainnya|kalau|kalo|bagaimana dengan|gimana dengan|dibanding(kan)? dengan)\b")
+_RE_RUJUK_LEMAH = re.compile(r"\b(yang|itu|ini|tersebut|sama|juga|nya)\b|-nya\b")
+
+NASKH_TULIS_ULANG = """Tulis ulang pertanyaan lanjutan pengguna asisten "Tanya SIDAK" menjadi SATU pertanyaan mandiri berbahasa Indonesia memakai riwayat. Keluarkan HANYA JSON: {"ulang":true|false,"mandiri":"..."}
+Aturan:
+- ulang=false (mandiri = pertanyaan asli) bila pertanyaan sudah berdiri sendiri, tidak merujuk riwayat, atau rujukannya tidak bisa dipastikan dari riwayat.
+- Selesaikan rujukan (itu, tadi, yang kedua, kalau modul 9) HANYA dengan faskes, modul, dan wilayah yang tertulis di riwayat. Jangan menambah kode faskes atau angka yang tidak ada di riwayat.
+- Jangan menjawab, jangan menambah permintaan baru, jangan mengubah arti.
+Fokus saat ini: {fokus}
+Riwayat (terbaru di bawah):
+{riwayat}
+Pertanyaan: {tanya}"""
+
+
+def tulis_ulang_model(asli, msgs, model):
+    n = _normal(asli)
+    if not any(m["role"] == "assistant" for m in msgs) or len(n.split(" ")) > 14:
+        return None
+    sh = slot_heuristik(asli, "/")
+    if not (sh.get("intent") == "refusal" or _RE_RUJUK_KUAT.search(n) or (_RE_RUJUK_LEMAH.search(n) and not sh.get("_yakin"))):
+        return None
+    faskes, modul = _konteks_riwayat(msgs)
+    riwayat = "\n".join("%s: %s" % ("Pengguna" if m["role"] == "user" else "Asisten", str(m.get("content") or "")[:600])
+                        for m in msgs[:-1][-4:])
+    fokus = "faskes=%s | modul=%s" % (", ".join(faskes) or "-", "#" + modul if modul else "-")
+    try:
+        r = model.chat.completions.create(model=MODEL, temperature=0, max_tokens=160, messages=[{
+            "role": "system", "content": NASKH_TULIS_ULANG.replace("{fokus}", fokus).replace("{riwayat}", riwayat).replace("{tanya}", asli)}])
+        j = ekstrak_json(r.choices[0].message.content or "")
+        m = str(j.get("mandiri") or "").strip() if isinstance(j.get("mandiri"), str) else ""
+        if j.get("ulang") is not True or not 3 <= len(m) <= 300:
+            return None
+        # Pagar: kode faskes hasil tulis ulang harus sudah ada di riwayat atau di pertanyaan.
+        dikenal = {_kode_bersih(c) for x in msgs for c in _RE_KODE.findall(str(x.get("content") or ""))}
+        if any(_kode_bersih(c) not in dikenal for c in _RE_KODE.findall(m)):
+            return None
+        return m
+    except Exception:
+        return None
+
+
 def jalankan_pipeline(msgs, halaman, model):
-    """Slot → retrieval ter-scope → komposisi. None jika bukan kandidat pipeline."""
+    """Pembungkus: pertanyaan lanjutan ditulis ulang (aturan dulu, model bila perlu), lalu jalur ter-scope yang sama."""
+    asli = ambil_pertanyaan(msgs)
+    if not asli:
+        return None
+    # Penjaga memeriksa pertanyaan asli, supaya penulisan ulang tidak bisa menghapus kata terlarang.
+    if _RE_INDIVIDU_G.search(asli):
+        return {"teks": TEMPLATE["G"], "angka": [], "tautan": [], "alat": []}
+    if _RE_VONIS_C.search(asli):
+        return {"teks": TEMPLATE["C"], "angka": [], "tautan": [], "alat": []}
+    q = lengkapi_dari_riwayat(asli, msgs)
+    if not q and model is not None:
+        q = tulis_ulang_model(asli, msgs, model)
+    if not q:
+        # Lanjutan yang konteksnya tidak bisa dipulihkan jangan ditolak sebagai "luar cakupan":
+        # serahkan ke loop alat yang membaca seluruh riwayat.
+        if _RE_LANJUT.search(_normal(asli)) and not _RE_KODE_ADA.search(asli) and any(m["role"] == "assistant" for m in msgs):
+            return None
+        return _jalankan_pipeline_inti(msgs, halaman, model)
+    i_u = max(i for i, m in enumerate(msgs) if m["role"] == "user")
+    msgs2 = [dict(m, content=q) if i == i_u else m for i, m in enumerate(msgs)]
+    out = _jalankan_pipeline_inti(msgs2, halaman, model)
+    # Salinan: objek asli bisa tersimpan di kache dan tidak boleh membawa penanda tafsir.
+    return dict(out, ditafsirkan=q) if out else out
+
+
+def _jalankan_pipeline_inti(msgs, halaman, model):
     teks_q = ambil_pertanyaan(msgs)
     if not teks_q:
         return None
+    if _RE_INDIVIDU_G.search(teks_q):
+        return {"teks": TEMPLATE["G"], "angka": [], "tautan": [], "alat": []}
+    if _RE_VONIS_C.search(teks_q):
+        return {"teks": TEMPLATE["C"], "angka": [], "tautan": [], "alat": []}
     # Pola kode yang yakin melewati panggilan LLM pembaca maksud (hemat 2-4 dtk).
     slot_h = slot_heuristik(teks_q, halaman or "/")
     slot = dict(slot_h, _asal="heuristic") if slot_h.get("_yakin") else ekstrak_slot(teks_q, halaman or "/", model=model)

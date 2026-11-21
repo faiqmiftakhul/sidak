@@ -288,7 +288,109 @@ function ambilPertanyaan(msgs: Array<Record<string, any>>): string {
   return ""
 }
 
+// Memori sesi: klien mengirim riwayat, jadi konteks (faskes, modul) dipulihkan dari giliran sebelumnya
+// tanpa menyimpan apa pun di server. Pertanyaan lanjutan ("detailkan", "kenapa?", "tren-nya?")
+// ditulis ulang menjadi pertanyaan lengkap sebelum masuk pipeline.
+const RE_KODE = /\b(?:rs|fktp)[- ]?\d{3,}\b/gi
+const RE_KODE_ADA = /\b(?:rs|fktp)[- ]?\d{3,}\b|\bmodul\s*#?\s*\d|#\s?\d/i
+const RE_MODUL_RIWAYAT = /modul\s*#?\s*(3|4|9|16)\b|#\s?(3|4|9|16)\b/i
+const RE_LANJUT = /^(tolong |coba |bisa |boleh )?(detail(kan|nya)?|jelaskan( lebih)?( lanjut| detail| rinci| lengkap)?|rinci(kan)?|lanjut(kan)?|terus|kenapa( bisa)?( begitu| demikian)?|mengapa( begitu)?|kok bisa|maksudnya|contohnya|perdalam|elaborasi|lebih (detail|lengkap|rinci|lanjut)|ceritakan lebih)\b|\b(sebelumnya|tadi|barusan|di atas|yang tadi|yang itu)\b/
+const RE_ANAFORA = /\b(nya|tersebut|tadi|sebelumnya|yang sama)\b|-nya\b/
+const kodeBersih = (s: string) => s.toUpperCase().replace(/\s/g, "-").replace(/^(RS|FKTP)(\d)/, "$1-$2")
+
+function konteksRiwayat(msgs: Array<Record<string, any>>): { faskes: string[]; modul: string | null } {
+  let iU = -1
+  for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "user") { iU = i; break }
+  const sebelum = msgs.slice(0, Math.max(iU, 0)).reverse()
+  const ais = sebelum.find(m => m.role === "assistant" && String(m.content ?? "").trim())
+  const userLalu = sebelum.find(m => m.role === "user")
+  const aisTeks = String(ais?.content ?? "")
+  const daftar = (s: string) => [...new Set((s.match(RE_KODE) ?? []).map(kodeBersih))]
+  let faskes = daftar(aisTeks)
+  if (!faskes.length) faskes = daftar(String(userLalu?.content ?? ""))
+  const m = aisTeks.match(RE_MODUL_RIWAYAT) ?? String(userLalu?.content ?? "").match(RE_MODUL_RIWAYAT)
+  return { faskes, modul: m ? (m[1] ?? m[2]) : null }
+}
+
+// null = bukan pertanyaan lanjutan; string = pertanyaan lengkap hasil penulisan ulang.
+export function lengkapiDariRiwayat(teks: string, msgs: Array<Record<string, any>>): string | null {
+  const n = normal(teks)
+  if (!n || n.split(" ").length > 12 || RE_KODE_ADA.test(teks)) return null
+  const lanjut = RE_LANJUT.test(n)
+  if (!lanjut && !RE_ANAFORA.test(n)) return null
+  const k = konteksRiwayat(msgs)
+  if (k.faskes.length === 1 && lanjut) return `Kenapa ${k.faskes[0]} ditandai${k.modul ? ` pada modul #${k.modul}` : ""}?`
+  if (k.faskes.length >= 2 && lanjut) return `Bandingkan ${k.faskes.slice(0, 3).join(" dan ")}`
+  if (k.modul && lanjut) return `Jelaskan modul #${k.modul} secara rinci`
+  if (!lanjut && k.modul && !/modul/.test(n)) return `${teks} modul #${k.modul}`
+  if (!lanjut && k.faskes.length === 1) return `${teks} ${k.faskes[0]}`
+  return null
+}
+
+// Rujukan yang butuh riwayat. "yang/ini/itu" sendirian terlalu umum, jadi hanya penanda kuat yang
+// memicu panggilan model; penanda lemah hanya bila heuristik tidak yakin.
+const RE_RUJUK_KUAT = /\b(tadi|sebelumnya|barusan|pertama|kedua|ketiga|terakhir|lainnya|kalau|kalo|bagaimana dengan|gimana dengan|dibanding(kan)? dengan)\b/
+const RE_RUJUK_LEMAH = /\b(yang|itu|ini|tersebut|sama|juga|nya)\b|-nya\b/
+
+const NASKH_TULIS_ULANG = `Tulis ulang pertanyaan lanjutan pengguna asisten "Tanya SIDAK" menjadi SATU pertanyaan mandiri berbahasa Indonesia memakai riwayat. Keluarkan HANYA JSON: {"ulang":true|false,"mandiri":"..."}
+Aturan:
+- ulang=false (mandiri = pertanyaan asli) bila pertanyaan sudah berdiri sendiri, tidak merujuk riwayat, atau rujukannya tidak bisa dipastikan dari riwayat.
+- Selesaikan rujukan (itu, tadi, yang kedua, kalau modul 9) HANYA dengan faskes, modul, dan wilayah yang tertulis di riwayat. Jangan menambah kode faskes atau angka yang tidak ada di riwayat.
+- Jangan menjawab, jangan menambah permintaan baru, jangan mengubah arti.
+Fokus saat ini: %f
+Riwayat (terbaru di bawah):
+%r
+Pertanyaan: %s`
+
+async function tulisUlangModel(asli: string, msgs: Array<Record<string, any>>, model: Client): Promise<string | null> {
+  const n = normal(asli)
+  if (!msgs.some(m => m.role === "assistant") || n.split(" ").length > 14) return null
+  const kabKeys = Object.keys((await store()).kab)
+  const sh = slotHeuristik(asli, "/", kabKeys)
+  const luput = sh.intent === "refusal"
+  if (!(luput || RE_RUJUK_KUAT.test(n) || (RE_RUJUK_LEMAH.test(n) && !sh._yakin))) return null
+  const k = konteksRiwayat(msgs)
+  const riwayat = msgs.slice(0, -1).slice(-4).map(m => `${m.role === "user" ? "Pengguna" : "Asisten"}: ${String(m.content ?? "").slice(0, 600)}`).join("\n")
+  const fokus = `faskes=${k.faskes.join(", ") || "-"} | modul=${k.modul ? "#" + k.modul : "-"}`
+  try {
+    const r = await model.chat.completions.create({
+      temperature: 0, max_tokens: 160,
+      messages: [{ role: "system", content: NASKH_TULIS_ULANG.replace("%f", () => fokus).replace("%r", () => riwayat).replace("%s", () => asli) }],
+    })
+    const j = ekstrakJson(r.choices[0]?.message?.content ?? "")
+    const m = typeof j.mandiri === "string" ? j.mandiri.trim() : ""
+    if (j.ulang !== true || m.length < 3 || m.length > 300) return null
+    // Pagar: kode faskes hasil tulis ulang harus sudah ada di riwayat atau di pertanyaan.
+    const dikenal = new Set((msgs.map(x => String(x.content ?? "")).join(" ").match(RE_KODE) ?? []).map(kodeBersih))
+    if ((m.match(RE_KODE) ?? []).some(c => !dikenal.has(kodeBersih(c)))) return null
+    return m
+  } catch { return null }
+}
+
+// Pembungkus: pertanyaan lanjutan ditulis ulang (aturan dulu, model bila perlu), lalu jalur ter-scope yang sama.
 async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: string | undefined, model: Client | null, t: number): Promise<Record<string, any> | null> {
+  const asli = ambilPertanyaan(msgs)
+  if (!asli) return null
+  // Penjaga memeriksa pertanyaan asli, supaya penulisan ulang tidak bisa menghapus kata terlarang.
+  if (RE_INDIVIDU.test(asli)) return { teks: TEMPLATE.G, angka: [], tautan: [], alat: [] }
+  if (RE_VONIS.test(asli)) return { teks: TEMPLATE.C, angka: [], tautan: [], alat: [] }
+  let q = lengkapiDariRiwayat(asli, msgs)
+  if (!q && model) q = await tulisUlangModel(asli, msgs, model)
+  if (!q) {
+    // Lanjutan yang konteksnya tidak bisa dipulihkan jangan ditolak sebagai "luar cakupan":
+    // serahkan ke loop alat yang membaca seluruh riwayat.
+    if (RE_LANJUT.test(normal(asli)) && !RE_KODE_ADA.test(asli) && msgs.some(m => m.role === "assistant")) return null
+    return jalankanPipelineInti(msgs, halaman, model, t)
+  }
+  let iU = -1
+  for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "user") { iU = i; break }
+  const msgs2 = msgs.map((m, i) => (i === iU ? { ...m, content: q! } : m))
+  const out = await jalankanPipelineInti(msgs2, halaman, model, t)
+  // Salinan: objek asli bisa tersimpan di kache dan tidak boleh membawa penanda tafsir.
+  return out ? { ...out, ditafsirkan: q } : out
+}
+
+async function jalankanPipelineInti(msgs: Array<Record<string, any>>, halaman: string | undefined, model: Client | null, t: number): Promise<Record<string, any> | null> {
   const teks_q = ambilPertanyaan(msgs)
   if (!teks_q) return null
   if (RE_INDIVIDU.test(teks_q)) return { teks: TEMPLATE.G, angka: [], tautan: [], alat: [] }

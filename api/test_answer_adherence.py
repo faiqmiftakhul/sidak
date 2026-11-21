@@ -97,8 +97,10 @@ def komposisi_stub(slot):
 class ModelStub:
     """Mengganti OpenAI client: ekstraksi pakai heuristik, komposisi pakai teladan."""
 
-    def __init__(self, ekstraktor=None):
+    def __init__(self, ekstraktor=None, penulis=None):
         self.ekstraktor = ekstraktor or main.slot_heuristik
+        self.penulis = penulis or (lambda prompt: {"ulang": False, "mandiri": ""})
+        self.tulis_ulang = 0
         self.panggilan = []
         self.sistem = []
 
@@ -125,6 +127,9 @@ class ModelStub:
             sysc = [m["content"] for m in msgs if m["role"] == "system"]
             self.stub.panggilan.append(kw.get("messages", [])[-1]["content"][:60])
             self.stub.sistem.append(sysc)
+            if sysc and "Tulis ulang pertanyaan lanjutan" in sysc[0]:
+                self.stub.tulis_ulang += 1
+                return ModelStub._Res(json.dumps(self.stub.penulis(sysc[0]), ensure_ascii=False))
             if sysc and "Ekstrak slot" in sysc[0]:
                 teks = sysc[0].split("Pertanyaan: ", 1)[-1]
                 return ModelStub._Res(json.dumps(self.stub.ekstraktor(teks), ensure_ascii=False))
@@ -381,11 +386,47 @@ def uji_luring(cetak=True):
             r = main.spa(jalur)
             assert os.path.basename(r.path) == "index.html", "T10: traversal lolos untuk %r -> %s" % (jalur, r.path)
 
+    # T18 - memori sesi: pertanyaan lanjutan dipulihkan dari riwayat, bukan ditolak sebagai "di luar cakupan"
+    U = lambda c: {"role": "user", "content": c}
+    A = lambda c: {"role": "assistant", "content": c}
+    a_satu = "RS-31595 berstatus Perlu perhatian pada modul #4 Upcoding severity: O/E 1,46."
+    a_daftar = "Tiga temuan: RS-31595 (A) pada modul #4; RS-31598 modul #4; RS-31608."
+    for riwayat, q, harus in [
+            ([U("Kenapa RS-31595 ditandai?"), A(a_satu)], "detailkan penjelasan kamu sebelumnya", "RS-31595"),
+            ([U("Kenapa RS-31595 ditandai?"), A(a_satu)], "detailkan", "RS-31595"),
+            ([U("RS mana yang perlu perhatian?"), A(a_daftar)], "detailkan", "RS-31598")]:
+        main.KACHE_JAWABAN.clear()
+        stub = ModelStub()
+        out = main.jalankan_pipeline(riwayat + [U(q)], "/", stub)
+        assert out and main.TEMPLATE["D"] not in out["teks"], "T18: %r ditolak" % q
+        assert harus in out["teks"] and harus in (out.get("ditafsirkan") or "") + out["teks"], "T18: %r: %r" % (q, out["teks"][:100])
+        assert stub.tulis_ulang == 0, "T18: aturan cukup, model tak boleh dipanggil untuk %r" % q
+
+    # T19 - penulisan ulang oleh model: rujukan bebas ("yang kedua", "kalau modul 9") jadi pertanyaan mandiri
+    def penulis_kedua(prompt):
+        return {"ulang": True, "mandiri": "Kenapa RS-31598 ditandai?"}
+    main.KACHE_JAWABAN.clear()
+    stub = ModelStub(penulis=penulis_kedua)
+    out = main.jalankan_pipeline([U("RS mana yang perlu perhatian?"), A(a_daftar), U("yang kedua kenapa ditandai?")], "/", stub)
+    assert stub.tulis_ulang == 1 and out["ditafsirkan"] == "Kenapa RS-31598 ditandai?" and "RS-31598" in out["teks"], "T19: %r" % out
+    # pagar: model mengarang kode faskes yang tak ada di riwayat → diabaikan
+    stub = ModelStub(penulis=lambda p: {"ulang": True, "mandiri": "Kenapa RS-99999 ditandai?"})
+    out = main.jalankan_pipeline([U("RS mana yang perlu perhatian?"), A(a_daftar), U("yang kedua kenapa ditandai?")], "/", stub)
+    assert not out or out.get("ditafsirkan") is None, "T19: kode karangan model lolos: %r" % out
+    # pertanyaan lengkap tak memanggil model penulis; ulang=false tidak mengubah apa pun
+    stub = ModelStub()
+    out = main.jalankan_pipeline([U("x"), A(a_satu), U("Berapa jumlah RS di Semarang?")], "/", stub)
+    assert stub.tulis_ulang == 0 and "ditafsirkan" not in out, "T19: pertanyaan lengkap dipanggil ke penulis"
+    # penulisan ulang tidak boleh menyelundupkan penilaian individu atau mencuci kata terlarang
+    stub = ModelStub(penulis=lambda p: {"ulang": True, "mandiri": "Kenapa RS-31595 ditandai?"})
+    out = main.jalankan_pipeline([U("x"), A(a_satu), U("apakah dokter di sana tadi curang?")], "/", stub)
+    assert out["teks"] == main.TEMPLATE["G"], "T19: kata individu lolos penulisan ulang: %r" % out
+
     if cetak:
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T17 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T19 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):
