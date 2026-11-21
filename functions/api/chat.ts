@@ -302,14 +302,18 @@ function konteksRiwayat(msgs: Array<Record<string, any>>): { faskes: string[]; m
   let iU = -1
   for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "user") { iU = i; break }
   const sebelum = msgs.slice(0, Math.max(iU, 0)).reverse()
-  const ais = sebelum.find(m => m.role === "assistant" && String(m.content ?? "").trim())
-  const userLalu = sebelum.find(m => m.role === "user")
-  const aisTeks = String(ais?.content ?? "")
   const daftar = (s: string) => [...new Set((s.match(RE_KODE) ?? []).map(kodeBersih))]
-  let faskes = daftar(aisTeks)
-  if (!faskes.length) faskes = daftar(String(userLalu?.content ?? ""))
-  const m = aisTeks.match(RE_MODUL_RIWAYAT) ?? String(userLalu?.content ?? "").match(RE_MODUL_RIWAYAT)
-  return { faskes, modul: m ? (m[1] ?? m[2]) : null }
+  // Mundur sampai ada jawaban yang menyebut faskes/modul: penolakan dan sapaan di antaranya dilewati.
+  for (const m of sebelum) {
+    if (m.role !== "assistant") continue
+    const teks = String(m.content ?? "")
+    const mm = teks.match(RE_MODUL_RIWAYAT)
+    const faskes = daftar(teks)
+    if (faskes.length || mm) return { faskes, modul: mm ? (mm[1] ?? mm[2]) : null }
+  }
+  const userLalu = String(sebelum.find(m => m.role === "user")?.content ?? "")
+  const mu = userLalu.match(RE_MODUL_RIWAYAT)
+  return { faskes: daftar(userLalu), modul: mu ? (mu[1] ?? mu[2]) : null }
 }
 
 // null = bukan pertanyaan lanjutan; string = pertanyaan lengkap hasil penulisan ulang.
@@ -377,9 +381,9 @@ async function jalankanPipeline(msgs: Array<Record<string, any>>, halaman: strin
   let q = lengkapiDariRiwayat(asli, msgs)
   if (!q && model) q = await tulisUlangModel(asli, msgs, model)
   if (!q) {
-    // Lanjutan yang konteksnya tidak bisa dipulihkan jangan ditolak sebagai "luar cakupan":
-    // serahkan ke loop alat yang membaca seluruh riwayat.
-    if (RE_LANJUT.test(normal(asli)) && !RE_KODE_ADA.test(asli) && msgs.some(m => m.role === "assistant")) return null
+    // Lanjutan yang konteksnya tidak bisa dipulihkan: bertanya balik, bukan menolak atau gagal.
+    if (RE_LANJUT.test(normal(asli)) && !RE_KODE_ADA.test(asli) && msgs.some(m => m.role === "assistant"))
+      return { teks: TEMPLATE.F.replace("%s", "Jawaban mana yang ingin dirinci? Sebutkan faskes atau modulnya."), angka: [], tautan: [], alat: [] }
     return jalankanPipelineInti(msgs, halaman, model, t)
   }
   let iU = -1

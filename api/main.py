@@ -1089,14 +1089,19 @@ def _kode_bersih(s):
 def _konteks_riwayat(msgs):
     i_u = max((i for i, m in enumerate(msgs) if m["role"] == "user"), default=0)
     sebelum = list(reversed(msgs[:i_u]))
-    ais = next((m for m in sebelum if m["role"] == "assistant" and str(m.get("content") or "").strip()), None)
-    user_lalu = next((m for m in sebelum if m["role"] == "user"), None)
-    ais_teks = str((ais or {}).get("content") or "")
-    user_teks = str((user_lalu or {}).get("content") or "")
     daftar = lambda s: list(dict.fromkeys(_kode_bersih(x) for x in _RE_KODE.findall(s)))
-    faskes = daftar(ais_teks) or daftar(user_teks)
-    m = _RE_MODUL_RIWAYAT.search(ais_teks) or _RE_MODUL_RIWAYAT.search(user_teks)
-    return faskes, (m.group(1) or m.group(2)) if m else None
+    # Mundur sampai ada jawaban yang menyebut faskes/modul: penolakan dan sapaan di antaranya dilewati.
+    for m in sebelum:
+        if m["role"] != "assistant":
+            continue
+        teks = str(m.get("content") or "")
+        mm = _RE_MODUL_RIWAYAT.search(teks)
+        faskes = daftar(teks)
+        if faskes or mm:
+            return faskes, (mm.group(1) or mm.group(2)) if mm else None
+    user_lalu = next((str(m.get("content") or "") for m in sebelum if m["role"] == "user"), "")
+    mu = _RE_MODUL_RIWAYAT.search(user_lalu)
+    return daftar(user_lalu), (mu.group(1) or mu.group(2)) if mu else None
 
 
 def lengkapi_dari_riwayat(teks, msgs):
@@ -1182,10 +1187,9 @@ def jalankan_pipeline(msgs, halaman, model):
     if not q and model is not None:
         q = tulis_ulang_model(asli, msgs, model)
     if not q:
-        # Lanjutan yang konteksnya tidak bisa dipulihkan jangan ditolak sebagai "luar cakupan":
-        # serahkan ke loop alat yang membaca seluruh riwayat.
+        # Lanjutan yang konteksnya tidak bisa dipulihkan: bertanya balik, bukan menolak atau gagal.
         if _RE_LANJUT.search(_normal(asli)) and not _RE_KODE_ADA.search(asli) and any(m["role"] == "assistant" for m in msgs):
-            return None
+            return {"teks": TEMPLATE["F"] % "Jawaban mana yang ingin dirinci? Sebutkan faskes atau modulnya.", "angka": [], "tautan": [], "alat": []}
         return _jalankan_pipeline_inti(msgs, halaman, model)
     i_u = max(i for i, m in enumerate(msgs) if m["role"] == "user")
     msgs2 = [dict(m, content=q) if i == i_u else m for i, m in enumerate(msgs)]

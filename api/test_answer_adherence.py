@@ -402,6 +402,14 @@ def uji_luring(cetak=True):
         assert harus in out["teks"] and harus in (out.get("ditafsirkan") or "") + out["teks"], "T18: %r: %r" % (q, out["teks"][:100])
         assert stub.tulis_ulang == 0, "T18: aturan cukup, model tak boleh dipanggil untuk %r" % q
 
+    # T18b - jawaban penolakan di antaranya dilewati; tanpa konteks sama sekali → klarifikasi, bukan penolakan/503
+    tolak = A(main.TEMPLATE["D"])
+    main.KACHE_JAWABAN.clear()
+    out = main.jalankan_pipeline([U("RS mana yang perlu perhatian?"), A(a_daftar), U("detailkan"), tolak, U("detailkan")], "/", ModelStub())
+    assert out and "RS-31595" in out["teks"] and main.TEMPLATE["D"] not in out["teks"], "T18b: %r" % out
+    out = main.jalankan_pipeline([U("halo"), A("Halo, saya Tanya SIDAK."), U("detailkan")], "/", ModelStub())
+    assert out and "klarifikasi" in out["teks"] and main.TEMPLATE["D"] not in out["teks"], "T18b: tanpa konteks harus klarifikasi: %r" % out
+
     # T19 - penulisan ulang oleh model: rujukan bebas ("yang kedua", "kalau modul 9") jadi pertanyaan mandiri
     def penulis_kedua(prompt):
         return {"ulang": True, "mandiri": "Kenapa RS-31598 ditandai?"}
