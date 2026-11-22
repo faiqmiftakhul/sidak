@@ -128,7 +128,7 @@ function TeksBerlink({ teks, faskes, nav }: { teks: string; faskes: Faskes[]; na
     const k = kode[i]
     if (!k) return <span key={i}>{p}</span>
     const f = cariFaskes(faskes, k)
-    return <span key={i}>{p}{f ? <a className="kode-faskes" href={'/faskes/' + f.id} onClick={e => { e.preventDefault(); nav(f.id) }}>{k}</a> : <span className="mono">{k}</span>}</span>
+    return <span key={i}>{p}{f ? <a className="kode-faskes" href={'/faskes/' + f.id} onClick={e => { e.preventDefault(); nav('/faskes/' + f.id) }}>{k}</a> : <span className="mono">{k}</span>}</span>
   })}</>
 }
 
@@ -217,7 +217,7 @@ function Bukti({ j, faskes, nav }: { j: Jawaban; faskes: Faskes[]; nav: (id: str
             const h = f.modul[m]!
             return (
               <tr key={x.label}>
-                <td><a className="kode-faskes" href={'/faskes/' + f.id} onClick={e => { e.preventDefault(); nav(f.id) }}>{x.label}</a></td>
+                <td><a className="kode-faskes" href={'/faskes/' + f.id} onClick={e => { e.preventDefault(); nav('/faskes/' + f.id) }}>{x.label}</a></td>
                 <td>{f.kelas_pendek}</td>
                 <td className="num"><OEChip v={h.OE} z={h.z} n={h.n} st={h.status} /></td>
                 <td className="num"><RupiahText v={f.rupiah_tertimbang} /></td>
