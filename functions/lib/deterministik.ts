@@ -165,7 +165,7 @@ async function detSatu(d: J, mod: string | null, slot: J): Promise<J> {
 
 async function detDaftar(d: J, hitung: J | undefined, mod: string | null, slot: J): Promise<J> {
   const lw = await labelWilayah(d.wilayah)
-  const rows: J[] = d.temuan.filter((x: J) => !slot.tipe || x.tipe === slot.tipe).slice(0, Math.min(Number(slot.topN) || 5, 5))
+  const rows: J[] = d.temuan.filter((x: J) => !slot.tipe || x.tipe === slot.tipe).slice(0, Math.min(Number(slot.topN) || 5, 10))
   const jenis = JENIS[slot.tipe] ?? null
   const lingkup = mod ? " pada " + namaModul(mod) : ""
   if (!rows.length) {

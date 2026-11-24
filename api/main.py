@@ -558,12 +558,17 @@ def slot_heuristik(teks, halaman=None):
         s["intent"] = "fact"
     elif any(w in t for w in ("yang mana", "mana saja", "terbesar", "tertinggi", "paling", "peringkat",
                               "urutan", "daftar", "ditandai", "perlu diperhati", "kandidat", "antrean")) \
-            or re.search(r"\bmana\b", t):
+            or re.search(r"\bmana\b", t) or "teratas" in t or ambil_jumlah(t) is not None:
         cocok = True
         s["intent"] = "list"
         s["metric"] = "oe" if ("oe" in t or "o/e" in t) else ("z" if " z" in t or t.startswith("z ") else "rupiah")
         # "RS tertinggi" tanpa penanda jamak = satu faskes; daftar terurut dibuka dengan faskes teratas.
         s["tunggal"] = bool(_TUNGGAL.search(t) and not _JAMAK.search(t))
+        n = ambil_jumlah(t)
+        if n:
+            s["topN"] = n
+            if n == 1:
+                s["tunggal"] = True
         s["buka_teratas"] = not re.search(r"perlu diperhati|perhatian|ditandai|kandidat|antrean", t)
         s["kerugian"] = bool(re.search(r"kerugian|\brugi\b|merugikan", t))
         s["tipe"] = "FKRTL" if re.search(r"\brs\b|rumah sakit", t) else ("FKTP" if re.search(r"\bfktp\b|klinik|puskesmas", t) else None)
@@ -614,6 +619,32 @@ _TUNGGAL = re.compile(r"\b(rs|faskes|fktp|rumah sakit|klinik|puskesmas)\b[^?.]{0
 _JAMAK = re.compile(r"mana saja|apa saja|siapa saja|daftar|urutkan|urutan|peringkat|beberapa|semua|teratas|top\s*\d|"
                     r"\b\d+\s*(rs|faskes|fktp)\b|\b(dua|tiga|empat|lima|sepuluh)\b")
 _BANDING = re.compile(r"\b(bandingkan|dibandingkan|banding|perbandingan|versus|vs)\b")
+
+# Jumlah baris yang diminta ("2 faskes", "tampilkan tiga", "top 3"). Nomor modul dan kode faskes tidak ikut terbaca.
+_ANGKA_KATA = {"satu": 1, "dua": 2, "tiga": 3, "empat": 4, "lima": 5, "enam": 6, "tujuh": 7, "delapan": 8, "sembilan": 9, "sepuluh": 10}
+_N_KATA = r"\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh"
+_RE_JUMLAH = re.compile(r"\b(?:top|tampilkan|cukup|hanya|ambil|pilihkan|sebutkan|kasih)\s+(" + _N_KATA + r")\b|\b("
+                        + _N_KATA + r")\s*(?:faskes|rs|rumah sakit|fktp|klinik|puskesmas|teratas)\b")
+
+
+def ambil_jumlah(t):
+    m = _RE_JUMLAH.search(re.sub(r"modul\s*#?\s*\d+|#\s?\d+", " ", (t or "").lower()))
+    if not m:
+        return None
+    x = m.group(1) or m.group(2)
+    n = _ANGKA_KATA.get(x) or int(x)
+    return n if 1 <= n <= 10 else None
+
+
+# Lanjutan yang hanya membatasi jumlah ("2 faskes aja yg ditampilkan"): setelah angka dibuang, tak ada kata bermakna lain.
+_KATA_BATAS = {"faskes", "rs", "fktp", "aja", "saja", "yg", "yang", "ditampilkan", "tampilkan", "tampil", "cukup", "hanya",
+               "ambil", "teratas", "dong", "deh", "ya", "kasih", "pilihkan", "pilih", "lihat", "tunjukkan", "sebutkan", "top", "jadi",
+               "tolong", "coba"}
+
+
+def _hanya_batas(n):
+    return ambil_jumlah(n) is not None and all(
+        w in _KATA_BATAS or w in _ANGKA_KATA or re.fullmatch(r"\d{1,2}", w) for w in n.split(" "))
 _NARASI = re.compile(r"\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|"
                      r"beda|perbedaan|rekomendasi|saran|sebaiknya)\b")
 
@@ -855,7 +886,7 @@ def _det_indikator(a, met):
 
 def _det_daftar(d, hitung, mod, slot):
     lw = _label_wilayah(d["wilayah"])
-    rows = [x for x in d["temuan"] if not slot.get("tipe") or x["tipe"] == slot["tipe"]][:min(int(slot.get("topN") or 5), 5)]
+    rows = [x for x in d["temuan"] if not slot.get("tipe") or x["tipe"] == slot["tipe"]][:min(int(slot.get("topN") or 5), 10)]
     jenis = {"FKRTL": "RS", "FKTP": "FKTP"}.get(slot.get("tipe"))
     lingkup = (" pada " + _nama_modul(mod)) if mod else ""
     if not rows:
@@ -1109,6 +1140,19 @@ def lengkapi_dari_riwayat(teks, msgs):
     n = _normal(teks)
     if not n or len(n.split(" ")) > 12 or _RE_KODE_ADA.search(teks):
         return None
+    # "2 faskes aja": ulangi pertanyaan sebelumnya (yang bukan pembatas juga) dengan jumlah baru.
+    if _hanya_batas(n):
+        i_u = max((i for i, m in enumerate(msgs) if m["role"] == "user"), default=0)
+        for m in reversed(msgs[:i_u]):
+            if m["role"] != "user":
+                continue
+            lalu = re.sub(r"\n*\(konteks: pengguna sedang membuka halaman[^)]*\)\s*$", "", str(m.get("content") or "")).strip()
+            if _hanya_batas(_normal(lalu)):
+                continue
+            if not lalu or _RE_KODE_ADA.search(re.sub(r"modul\s*#?\s*\d+|#\s?\d+", "", lalu, flags=re.I)):
+                return None
+            return "%s, tampilkan %d teratas" % (re.sub(r"[?.!\s]+$", "", lalu), ambil_jumlah(n))
+        return None
     lanjut = bool(_RE_LANJUT.search(n))
     if not lanjut and not _RE_ANAFORA.search(n):
         return None
@@ -1133,7 +1177,7 @@ _RE_VONIS_C = re.compile(r"\b(apakah|benarkah|pasti|terbukti)\b.*\b(fraud|curang
 # Rujukan yang butuh riwayat. "yang/ini/itu" sendirian terlalu umum, jadi hanya penanda kuat yang
 # memicu panggilan model; penanda lemah hanya bila heuristik tidak yakin.
 _RE_RUJUK_KUAT = re.compile(r"\b(tadi|sebelumnya|barusan|pertama|kedua|ketiga|terakhir|lainnya|kalau|kalo|bagaimana dengan|gimana dengan|dibanding(kan)? dengan)\b")
-_RE_RUJUK_LEMAH = re.compile(r"\b(yang|itu|ini|tersebut|sama|juga|nya)\b|-nya\b")
+_RE_RUJUK_LEMAH = re.compile(r"\b(yang|yg|itu|ini|tersebut|sama|juga|nya)\b|-nya\b")
 
 NASKH_TULIS_ULANG = """Tulis ulang pertanyaan lanjutan pengguna asisten "Tanya SIDAK" menjadi SATU pertanyaan mandiri berbahasa Indonesia memakai riwayat. Keluarkan HANYA JSON: {"ulang":true|false,"mandiri":"..."}
 Aturan:

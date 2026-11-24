@@ -83,6 +83,23 @@ const BANDING = /\b(bandingkan|dibandingkan|banding|perbandingan|versus|vs)\b/
 const NARASI = /\b(kenapa|mengapa|jelaskan|alasan|apa sebab|bagaimana bisa|bandingkan|dibandingkan|versus|vs|beda|perbedaan|rekomendasi|saran|sebaiknya)\b/
 const reKata = (x: string) => new RegExp("\\b" + x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b")
 
+// Jumlah baris yang diminta ("2 faskes", "tampilkan tiga", "top 3"). Nomor modul dan kode faskes tidak ikut terbaca.
+const ANGKA_KATA: Record<string, number> = { satu: 1, dua: 2, tiga: 3, empat: 4, lima: 5, enam: 6, tujuh: 7, delapan: 8, sembilan: 9, sepuluh: 10 }
+const N_KATA = "\\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh"
+const RE_JUMLAH = new RegExp(`\\b(?:top|tampilkan|cukup|hanya|ambil|pilihkan|sebutkan|kasih)\\s+(${N_KATA})\\b|\\b(${N_KATA})\\s*(?:faskes|rs|rumah sakit|fktp|klinik|puskesmas|teratas)\\b`)
+export function ambilJumlah(t: string): number | null {
+  const m = t.toLowerCase().replace(/modul\s*#?\s*\d+|#\s?\d+/g, " ").match(RE_JUMLAH)
+  if (!m) return null
+  const x = m[1] ?? m[2]
+  const n = ANGKA_KATA[x] ?? Number(x)
+  return n >= 1 && n <= 10 ? n : null
+}
+// Lanjutan yang hanya membatasi jumlah ("2 faskes aja yg ditampilkan"): setelah angka dibuang, tak ada kata bermakna lain.
+const KATA_BATAS = new Set(["faskes", "rs", "fktp", "aja", "saja", "yg", "yang", "ditampilkan", "tampilkan", "tampil", "cukup", "hanya",
+  "ambil", "teratas", "dong", "deh", "ya", "kasih", "pilihkan", "pilih", "lihat", "tunjukkan", "sebutkan", "top", "jadi", "tolong", "coba"])
+const hanyaBatas = (n: string): boolean => ambilJumlah(n) != null &&
+  n.split(" ").every(w => KATA_BATAS.has(w) || w in ANGKA_KATA || /^\d{1,2}$/.test(w))
+
 // Kab/kota Jawa Tengah selain Kota Semarang yang disebut di pertanyaan (kunci S.kab), atau "JAWA TENGAH".
 function wilayahDisebut(t: string, kabKeys: string[]): string | null {
   if (/jawa tengah|jateng|provinsi/.test(t)) return "JAWA TENGAH"
@@ -117,12 +134,15 @@ export function slotHeuristik(teks: string, halaman?: string, kabKeys: string[] 
     s.intent = "fact"
   } else if (t.includes("yang mana") || t.includes("mana saja") || t.includes("terbesar") || t.includes("tertinggi") ||
     t.includes("paling") || t.includes("peringkat") || t.includes("urutan") || t.includes("daftar") ||
-    t.includes("ditandai") || t.includes("perlu diperhati") || t.includes("kandidat") || t.includes("antrean") || /\bmana\b/.test(t)) {
+    t.includes("ditandai") || t.includes("perlu diperhati") || t.includes("kandidat") || t.includes("antrean") || /\bmana\b/.test(t) ||
+    t.includes("teratas") || ambilJumlah(t) != null) {
     cocok = true
     s.intent = "list"
     s.metric = t.includes("oe") || t.includes("o/e") ? "oe" : (t.includes(" z") || t.startsWith("z ") ? "z" : "rupiah")
     // "RS tertinggi" tanpa penanda jamak = satu faskes; daftar terurut dibuka dengan faskes teratas.
     s.tunggal = TUNGGAL.test(t) && !JAMAK.test(t)
+    const n = ambilJumlah(t)
+    if (n) { s.topN = n; if (n === 1) s.tunggal = true }
     s.buka_teratas = !/perlu diperhati|perhatian|ditandai|kandidat|antrean/.test(t)
     s.kerugian = /kerugian|\brugi\b|merugikan/.test(t)
     s.tipe = /\brs\b|rumah sakit/.test(t) ? "FKRTL" : (/\bfktp\b|klinik|puskesmas/.test(t) ? "FKTP" : null)
@@ -320,6 +340,19 @@ function konteksRiwayat(msgs: Array<Record<string, any>>): { faskes: string[]; m
 export function lengkapiDariRiwayat(teks: string, msgs: Array<Record<string, any>>): string | null {
   const n = normal(teks)
   if (!n || n.split(" ").length > 12 || RE_KODE_ADA.test(teks)) return null
+  // "2 faskes aja": ulangi pertanyaan sebelumnya (yang bukan pembatas juga) dengan jumlah baru.
+  if (hanyaBatas(n)) {
+    let iU = -1
+    for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "user") { iU = i; break }
+    for (let i = iU - 1; i >= 0; i--) {
+      if (msgs[i].role !== "user") continue
+      const lalu = String(msgs[i].content ?? "").replace(/\n*\(konteks: pengguna sedang membuka halaman[^)]*\)\s*$/, "").trim()
+      if (hanyaBatas(normal(lalu))) continue
+      if (!lalu || RE_KODE_ADA.test(lalu.replace(/modul\s*#?\s*\d+|#\s?\d+/gi, ""))) return null
+      return `${lalu.replace(/[?.!\s]+$/, "")}, tampilkan ${ambilJumlah(n)} teratas`
+    }
+    return null
+  }
   const lanjut = RE_LANJUT.test(n)
   if (!lanjut && !RE_ANAFORA.test(n)) return null
   const k = konteksRiwayat(msgs)
@@ -334,7 +367,7 @@ export function lengkapiDariRiwayat(teks: string, msgs: Array<Record<string, any
 // Rujukan yang butuh riwayat. "yang/ini/itu" sendirian terlalu umum, jadi hanya penanda kuat yang
 // memicu panggilan model; penanda lemah hanya bila heuristik tidak yakin.
 const RE_RUJUK_KUAT = /\b(tadi|sebelumnya|barusan|pertama|kedua|ketiga|terakhir|lainnya|kalau|kalo|bagaimana dengan|gimana dengan|dibanding(kan)? dengan)\b/
-const RE_RUJUK_LEMAH = /\b(yang|itu|ini|tersebut|sama|juga|nya)\b|-nya\b/
+const RE_RUJUK_LEMAH = /\b(yang|yg|itu|ini|tersebut|sama|juga|nya)\b|-nya\b/
 
 const NASKH_TULIS_ULANG = `Tulis ulang pertanyaan lanjutan pengguna asisten "Tanya SIDAK" menjadi SATU pertanyaan mandiri berbahasa Indonesia memakai riwayat. Keluarkan HANYA JSON: {"ulang":true|false,"mandiri":"..."}
 Aturan:

@@ -430,11 +430,26 @@ def uji_luring(cetak=True):
     out = main.jalankan_pipeline([U("x"), A(a_satu), U("apakah dokter di sana tadi curang?")], "/", stub)
     assert out["teks"] == main.TEMPLATE["G"], "T19: kata individu lolos penulisan ulang: %r" % out
 
+    # T20 - jumlah yang diminta dihormati; "2 faskes aja" mengulang pertanyaan sebelumnya dengan jumlah baru
+    import re as _re
+    baris_tabel = lambda teks: len([b for b in teks.split("\n") if _re.match(r"\|\s*(RS|FKTP)-", b)])
+    assert main.ambil_jumlah("pilihkan 2 faskes yg paling prioritas diaudit") == 2
+    assert main.ambil_jumlah("top 3 di modul 4") == 3 and main.ambil_jumlah("modul 4 saja") is None
+    assert main.ambil_jumlah("tren readmisi 30 hari") is None and main.ambil_jumlah("kenapa rs 31595") is None
+    main.KACHE_JAWABAN.clear()
+    out = main.jalankan_pipeline([U("pilihkan 2 faskes yg paling prioritas diaudit")], "/", ModelStub())
+    assert baris_tabel(out["teks"]) == 2, "T20: harus 2 baris: %r" % out["teks"]
+    main.KACHE_JAWABAN.clear()
+    stub = ModelStub()
+    out = main.jalankan_pipeline([U("faskes mana yang paling prioritas diaudit?"), A(a_daftar), U("2 faskes aja yg ditampilkan")], "/", stub)
+    assert "teratas" in (out.get("ditafsirkan") or "") and baris_tabel(out["teks"]) == 2, "T20 lanjutan: %r" % out
+    assert stub.tulis_ulang == 0, "T20: aturan cukup, model tak boleh dipanggil"
+
     if cetak:
         print("\n=== contoh jawaban (stub, mode luring) ===")
         for qid in ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6"):
             print("\n[%s] %s\n%s\n  alat baca: %s" % (qid, PERTANYAAN[qid], j[qid]["teks"], j[qid].get("alat")))
-    print("\nLURING: lolos (T1-T19 · Q1-Q6)")
+    print("\nLURING: lolos (T1-T20 · Q1-Q6)")
 
 
 def uji_live(base="http://127.0.0.1:8000"):
